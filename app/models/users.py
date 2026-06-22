@@ -30,8 +30,3 @@ class User(SQLModel, table=True):
         default=None,
         sa_type=DateTime(timezone=True),  # pyright: ignore[reportArgumentType]
     )
-
-
-class Users(SQLModel):
-    data: list[User]
-    count: int
