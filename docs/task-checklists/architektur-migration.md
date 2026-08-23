@@ -12,15 +12,15 @@ Ausgangslage: flaches `app/models/`, `app/routes/` (nach Schicht statt Feature s
 - [x] Migration lokal gegen die Compose-Postgres-DB testen (`alembic upgrade head`)
 
 ## 2. `users`-Feature auf neue Struktur umziehen
-- [ ] Verzeichnis `app/users/` anlegen mit `router.py`, `schemas.py`, `models.py`, `repository.py`, `exceptions.py`, `application/command/`, `application/query/`
-- [ ] `app/models/users.py` → `app/users/models.py` verschieben
-- [ ] Eigene Pydantic-Schemas `UserCreate` (Request) und `UserResponse` (Response) in `app/users/schemas.py` anlegen
-- [ ] `app/users/repository.py`: reine DB-Zugriffsfunktionen (z. B. `get_by_external_auth_id`, `create`)
-- [ ] `app/users/application/query/user_query_service.py`: `get_current_user`-Logik
-- [ ] `app/users/application/command/user_command_service.py`: `create_user`-Logik
-- [ ] `app/users/router.py`: Router nutzt nur noch Service-Funktionen, mapped über `model_validate(obj, from_attributes=True)` auf `UserResponse`
-- [ ] `app/models/`, `app/routes/`-Ordner entfernen, sobald leer
-- [ ] Import in `app/main.py` auf `app.users.router` anpassen
+- [x] Verzeichnis `app/users/` anlegen mit `router.py`, `schemas.py`, `models.py`, `repository.py`, `exceptions.py`, `application/command/`, `application/query/`
+- [x] `app/models/users.py` → `app/users/models.py` verschieben
+- [x] Eigene Pydantic-Schemas `UserCreate` (Request) und `UserResponse` (Response) in `app/users/schemas.py` anlegen
+- [x] `app/users/repository.py`: reine DB-Zugriffsfunktionen (z. B. `get_by_external_auth_id`, `create`)
+- [x] `app/users/application/query/user_query_service.py`: `get_current_user`-Logik
+- [x] `app/users/application/command/user_command_service.py`: `create_user`-Logik
+- [x] `app/users/router.py`: Router nutzt nur noch Service-Funktionen, mapped über `model_validate(obj, from_attributes=True)` auf `UserResponse`
+- [x] `app/models/`, `app/routes/`-Ordner entfernen, sobald leer
+- [x] Import in `app/main.py` auf `app.users.router` anpassen
 
 ## 3. Logging (structlog)
 - [ ] `structlog` als Dependency hinzufügen

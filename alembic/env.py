@@ -9,7 +9,7 @@ from app.config import get_settings
 
 # import every module that defines a SQLModel table, so it registers
 # itself on SQLModel.metadata before autogenerate compares against it
-from app.models import users as _users  # noqa: F401
+from app.users import models as _users_models  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
