@@ -5,11 +5,11 @@ Kontext: `CLAUDE.local.md` wurde von einem Java/Spring-Boot-Template (Tipply) au
 Ausgangslage: flaches `app/models/`, `app/routes/` (nach Schicht statt Feature sortiert), kein Service-/Repository-Layer, `SQLModel.metadata.create_all()` statt Migrationen, keine Tests, kein Logging-Setup, kein Typecheck/Modulgrenzen-Check.
 
 ## 1. Schema-Migration (Alembic)
-- [ ] Alembic als Dependency hinzufügen (`uv add alembic`)
-- [ ] `alembic init` ausführen, `env.py` auf SQLModel-Metadata + `postgres_url` aus `app.config.Settings` verdrahten
-- [ ] Erste Migration aus bestehendem `User`-Modell autogenerieren (`alembic revision --autogenerate -m "initial schema"`)
-- [ ] `create_db_and_tables()` / `SQLModel.metadata.create_all()`-Aufruf aus `app/main.py` / `app/db/db.py` entfernen
-- [ ] Migration lokal gegen die Compose-Postgres-DB testen (`alembic upgrade head`)
+- [x] Alembic als Dependency hinzufügen (`uv add alembic`)
+- [x] `alembic init` ausführen, `env.py` auf SQLModel-Metadata + `postgres_url` aus `app.config.Settings` verdrahten
+- [x] Erste Migration aus bestehendem `User`-Modell autogenerieren (`alembic revision --autogenerate -m "initial schema"`)
+- [x] `create_db_and_tables()` / `SQLModel.metadata.create_all()`-Aufruf aus `app/main.py` / `app/db/db.py` entfernen
+- [x] Migration lokal gegen die Compose-Postgres-DB testen (`alembic upgrade head`)
 
 ## 2. `users`-Feature auf neue Struktur umziehen
 - [ ] Verzeichnis `app/users/` anlegen mit `router.py`, `schemas.py`, `models.py`, `repository.py`, `exceptions.py`, `application/command/`, `application/query/`

@@ -5,6 +5,7 @@ description = "Backend for the zockblock app"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "alembic>=1.19.1",
     "auth0-fastapi-api>=1.0.0b7",
     "fastapi[standard]>=0.136.3",
     "psycopg2-binary>=2.9.12",
