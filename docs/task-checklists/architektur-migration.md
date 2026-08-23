@@ -23,8 +23,8 @@ Ausgangslage: flaches `app/models/`, `app/routes/` (nach Schicht statt Feature s
 - [x] Import in `app/main.py` auf `app.users.router` anpassen
 
 ## 3. Logging (structlog)
-- [ ] `structlog` als Dependency hinzufügen
-- [ ] Konfiguration (JSON in Produktion, Plain-Text lokal) zentral anlegen (z. B. `app/logging.py`), beim Start in `app/main.py` initialisieren
+- [x] `structlog` als Dependency hinzufügen
+- [x] Konfiguration (JSON in Produktion, Plain-Text lokal) zentral anlegen (z. B. `app/logging.py`), beim Start in `app/main.py` initialisieren
 
 ## 4. Tests
 - [ ] `pytest` + `testcontainers[postgres]` als Dev-Dependency hinzufügen

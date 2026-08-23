@@ -1,6 +1,9 @@
+import structlog
 from sqlmodel import Session
 from app.users import repository
 from app.users.models import User
+
+logger = structlog.get_logger()
 
 
 def create_user(session: Session, username: str, external_auth_id: str) -> User:
@@ -9,5 +12,7 @@ def create_user(session: Session, username: str, external_auth_id: str) -> User:
 
     session.commit()
     session.refresh(user)
+
+    logger.info("user created", user_id=str(user.id))
 
     return user

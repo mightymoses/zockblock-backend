@@ -1,7 +1,10 @@
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
+from app.logging import configure_logging
 from app.users.exceptions import UserNotFoundException
 from app.users.router import router as users_router
+
+configure_logging()
 
 app = FastAPI()
 
