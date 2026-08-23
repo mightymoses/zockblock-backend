@@ -31,6 +31,11 @@ docker compose up -d
 uv run fastapi dev
 ```
 
+Or if the frontend is running via USB-Debugging: 
+```bash
+uv run fastapi dev --host 0.0.0.0
+```
+
 ## Linter
 
 Run the linter:

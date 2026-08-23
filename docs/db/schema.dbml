@@ -1,0 +1,230 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table users {
+  id integer [pk, increment]
+  updated_at timestamp [not null]
+  external_auth_id varchar [unique]
+  username varchar [not null]
+  avatar_url varchar
+  animal_asset_name varchar
+  avatar_color integer
+  owner_user_id integer [ref: > users.id]
+  created_at timestamp [not null]
+  deleted_at timestamp
+}
+
+Table session_participants {
+  player_id integer [pk, ref: > users.id]
+  session_id integer [pk, ref: > sessions.id]
+  seat_index integer
+}
+
+Table session_likes {
+  user_id integer [pk, ref: > users.id]
+  session_id integer [pk, ref: > sessions.id]
+  created_at timestamp [not null]
+}
+
+Table session_comments {
+  id integer [pk, increment]
+  session_id integer [not null, ref: > sessions.id]
+  user_id integer [not null, ref: > users.id]
+  parent_comment_id integer [ref: > session_comments.id]
+  content text [not null]
+  is_edited boolean [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table comment_likes {
+  user_id integer [pk, ref: > users.id]
+  comment_id integer [pk, ref: > session_comments.id]
+  created_at timestamp [not null]
+}
+
+Table sessions {
+  id integer [pk, increment]
+  game_definition_id integer [not null, ref: > game_definitions.id]
+  name varchar
+  started_at timestamp [not null]
+  ended_at timestamp
+  is_finished boolean [not null, default: false]
+  location point
+  deleted_at timestamp
+}
+
+Table game_definitions {
+  id integer [pk, increment]
+  name varchar [not null]
+}
+
+Table session_images {
+  id integer [pk, increment]
+  session_id integer [not null, ref: > sessions.id]
+  url varchar [not null]
+  created_at timestamp [not null]
+}
+
+Table kniffel_events {
+  id integer [pk, increment]
+  session_id integer [not null, ref: > sessions.id]
+  user_id integer [not null, ref: > users.id]
+  category_key varchar [not null]
+  points integer
+  is_crossed_out boolean [not null, default: false]
+  event_type varchar [not null]
+  created_at timestamp [not null]
+}
+
+Table kniffel_session_results {
+  session_id integer [pk, ref: > sessions.id]
+  user_id integer [pk, ref: > users.id]
+  rank integer [not null]
+  total_points integer
+  upper_points integer
+  lower_points integer
+  has_upper_bonus boolean
+  kniffel_count integer
+  bonus_kniffel_count integer
+  ones_score integer
+  twos_score integer
+  threes_score integer
+  fours_score integer
+  fives_score integer
+  sixes_score integer
+  three_kind_score integer
+  four_kind_score integer
+  full_house_score integer
+  small_straight_score integer
+  large_straight_score integer
+  kniffel_score integer
+  chance_score integer
+  created_at timestamp [not null]
+}
+
+Table ratings {
+  user_id integer [pk, ref: > users.id]
+  game_definition_id integer [pk, ref: > game_definitions.id]
+  mu real [not null]
+  sigma real [not null]
+  conservative real [not null]
+  updated_at timestamp [not null]
+}
+
+Table rating_history {
+  user_id integer [pk, ref: > users.id]
+  session_id integer [pk, ref: > sessions.id]
+  game_definition_id integer [not null, ref: > game_definitions.id]
+  mu real [not null]
+  sigma real [not null]
+  conservative real [not null]
+  created_at timestamp [not null]
+}
+
+Table kniffel_stats {
+  user_id integer [pk, ref: > users.id]
+  mode varchar [pk]
+
+  // Streaks
+  current_win_streak integer [not null]
+  longest_win_streak integer [not null]
+  current_bonus_streak integer [not null]
+  longest_bonus_streak integer [not null]
+  current_kniffel_streak integer [not null]
+  longest_kniffel_streak integer [not null]
+  recent_win_form varchar
+  recent_bonus_form varchar
+  recent_kniffel_form varchar
+
+  // Allgemein
+  games_played integer [not null]
+  win_count integer [not null]
+  best_total_points integer [not null]
+  total_points_sum integer [not null]
+  total_points_sum_sq bigint [not null]
+  rank_sum integer [not null]
+  participant_count_sum integer [not null]
+
+  // Oberer Block
+  upper_points_sum integer [not null]
+  best_upper_points integer [not null]
+  games_with_bonus integer [not null]
+  upper_points_sum_sq bigint [not null]
+  wins_with_bonus integer [not null]
+  wins_without_bonus integer [not null]
+  ones_sum integer [not null]
+  ones_sum_sq bigint [not null]
+  twos_sum integer [not null]
+  twos_sum_sq bigint [not null]
+  threes_sum integer [not null]
+  threes_sum_sq bigint [not null]
+  fours_sum integer [not null]
+  fours_sum_sq bigint [not null]
+  fives_sum integer [not null]
+  fives_sum_sq bigint [not null]
+  sixes_sum integer [not null]
+  sixes_sum_sq bigint [not null]
+
+  // Unterer Block
+  lower_points_sum integer [not null]
+  best_lower_points integer [not null]
+  games_with_kniffel integer [not null]
+  lower_points_sum_sq bigint [not null]
+  wins_with_kniffel integer [not null]
+  wins_without_kniffel integer [not null]
+  max_kniffels_in_game integer [not null]
+  three_kind_sum integer [not null]
+  three_kind_sum_sq bigint [not null]
+  four_kind_sum integer [not null]
+  four_kind_sum_sq bigint [not null]
+  full_house_sum integer [not null]
+  full_house_crossed integer [not null]
+  small_straight_sum integer [not null]
+  small_straight_crossed integer [not null]
+  large_straight_sum integer [not null]
+  large_straight_crossed integer [not null]
+  kniffel_sum integer [not null]
+  kniffel_crossed integer [not null]
+  chance_sum integer [not null]
+  chance_sum_sq bigint [not null]
+
+  // Fun Facts
+  current_loss_streak integer [not null]
+  longest_loss_streak integer [not null]
+  current_no_bonus_streak integer [not null]
+  longest_no_bonus_streak integer [not null]
+  current_no_kniffel_streak integer [not null]
+  longest_no_kniffel_streak integer [not null]
+  worst_total_points integer [not null]
+  worst_upper_points integer [not null]
+  worst_lower_points integer [not null]
+  win_margin_sum integer [not null]
+  own_score_when_winning_sum integer [not null]
+  best_win_margin integer [not null]
+  closest_win_margin integer [not null]
+  shared_win_count integer [not null]
+  loss_deficit_sum integer [not null]
+  own_score_when_losing_sum integer [not null]
+  worst_loss_deficit integer [not null]
+  closest_loss_deficit integer [not null]
+  bonus_kniffel_count integer [not null]
+  ones_crossed integer [not null]
+  twos_crossed integer [not null]
+  threes_crossed integer [not null]
+  fours_crossed integer [not null]
+  fives_crossed integer [not null]
+  sixes_crossed integer [not null]
+  three_kind_crossed integer [not null]
+  four_kind_crossed integer [not null]
+
+  updated_at timestamp [not null]
+}
+
+Table friendships {
+  requester_id integer [pk, ref: > users.id]
+  receiver_id integer [pk, ref: > users.id]
+  status varchar [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
