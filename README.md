@@ -17,7 +17,7 @@ The following needs to be installed:
 uv sync
 ```
 
-2. Inside the `app` directory copy the content of the `.env.example` file to a new `.env` file and add a fitting value for each variable.
+2. In the project root, copy the content of the `.env.example` file to a new `.env` file and add a fitting value for each variable.
 
 ## Development
 
@@ -26,7 +26,12 @@ uv sync
 docker compose up -d
 ```
 
-2. Run the backend:
+2. Apply the database migrations:
+```bash
+uv run alembic upgrade head
+```
+
+3. Run the backend:
 ```bash
 uv run fastapi dev
 ```
@@ -34,6 +39,11 @@ uv run fastapi dev
 Or if the frontend is running via USB-Debugging: 
 ```bash
 uv run fastapi dev --host 0.0.0.0
+```
+
+If you change a model, generate a new migration for it instead of applying the change manually:
+```bash
+uv run alembic revision --autogenerate -m "<description>"
 ```
 
 ## Linter
@@ -53,6 +63,34 @@ uv run ruff check --fix
 Run the formatter:
 ```bash
 uv run ruff format
+```
+
+## Tests
+
+Tests need Docker running (a real Postgres is started automatically per test session via testcontainers).
+
+Run the tests:
+```bash
+uv run pytest
+```
+
+Run the tests with a coverage report:
+```bash
+uv run pytest --cov=app --cov-report=term-missing
+```
+
+## Typecheck
+
+Run the type checker:
+```bash
+uv run pyright
+```
+
+## Module boundaries
+
+Check that features don't reach into each other's internals:
+```bash
+uv run lint-imports
 ```
 
 ## Backend documentation

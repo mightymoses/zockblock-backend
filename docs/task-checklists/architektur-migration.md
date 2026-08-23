@@ -37,3 +37,11 @@ Ausgangslage: flaches `app/models/`, `app/routes/` (nach Schicht statt Feature s
 - [x] `pyright` als Dev-Dependency hinzufügen, Konfiguration in `pyproject.toml` (`[tool.pyright]`) anlegen — `typeCheckingMode = "standard"` (strict: 132 Fehler, praktisch alles Rauschen aus SQLAlchemy/httpx/FastAPI-Typisierung, kein echter Mehrwert)
 - [x] `import-linter` als Dev-Dependency hinzufügen, Grundkonfiguration (`root_package = "app"`) in `pyproject.toml` — **noch kein Independence-Contract**, der wird erst sinnvoll, sobald ein zweites Feature neben `app.users` existiert (→ dann hier nachtragen)
 - [x] `pytest-archon` als Dev-Dependency hinzufügen, zwei Architektur-Regeln in `tests/test_architecture.py`: Repository darf Router/Service nicht importieren, Service darf Router nicht importieren (generisch über `app.*`, gilt für jedes künftige Feature)
+
+## 6. Aufräumen: `.env`-Ablage & README
+Beim Review-Durchgang gefunden: `config.py` lädt `.env` relativ zum Arbeitsverzeichnis (= Projekt-Root bei allen `uv run ...`-Befehlen), README sagte aber fälschlich "Inside the `app` directory" – dadurch lag `.env.example` in `app/` statt im Root, plus eine überflüssige `app/.env`-Karteileiche.
+- [x] `app/.env.example` nach `.env.example` (Projekt-Root) verschieben
+- [x] Überflüssige `app/.env` löschen (nicht versioniert, inhaltsgleich zur Root-`.env`)
+- [x] README: Setup-Schritt 2 auf Projekt-Root korrigieren
+- [x] README: Alembic-Migrationsschritt in "Development" ergänzen (ohne `alembic upgrade head` hat eine frische DB kein Schema mehr)
+- [x] README: Abschnitte für Tests (inkl. Hinweis auf laufendes Docker für testcontainers), Typecheck und Modulgrenzen-Check ergänzen
