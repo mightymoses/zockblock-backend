@@ -27,9 +27,11 @@ Ausgangslage: flaches `app/models/`, `app/routes/` (nach Schicht statt Feature s
 - [x] Konfiguration (JSON in Produktion, Plain-Text lokal) zentral anlegen (z. B. `app/logging.py`), beim Start in `app/main.py` initialisieren
 
 ## 4. Tests
-- [ ] `pytest` + `testcontainers[postgres]` als Dev-Dependency hinzufügen
-- [ ] `tests/`-Verzeichnis anlegen, pytest-Fixture für Postgres-Testcontainer + DB-Session
-- [ ] Ersten Test für `users`-Feature schreiben (z. B. `create_user` → `get_current_user`)
+- [x] `pytest` + `testcontainers[postgres]` als Dev-Dependency hinzufügen
+- [x] `tests/`-Verzeichnis anlegen, pytest-Fixture für Postgres-Testcontainer + DB-Session
+- [x] Ersten Test für `users`-Feature schreiben (z. B. `create_user` → `get_current_user`)
+- [x] `pytest-cov` als Dev-Dependency hinzufügen, `[tool.coverage.run]` in `pyproject.toml` konfigurieren
+- [x] Router-Test mit `TestClient` ergänzen (`AuthDep`/`SessionDep` via `app.dependency_overrides` austauschen), inkl. 404-Fall
 
 ## 5. Typecheck & Modulgrenzen
 - [ ] `pyright` als Dev-Dependency hinzufügen, Konfiguration in `pyproject.toml` (`[tool.pyright]`) anlegen
