@@ -13,10 +13,11 @@ Render, EU-Region (Frankfurt) wegen Auth0-EU-Tenant. Details/Preisrecherche sieh
 - [x] Lokal bauen & starten, gegen die lokale Compose-Postgres-DB testen — Build erfolgreich, Container im Compose-Netzwerk gestartet, `/health` antwortet, Docker meldet `healthy`
 
 ## 2. GitHub-Actions-Workflow (CI)
-- [ ] `.github/workflows/ci.yml`: Lint (`ruff check`) → Typecheck (`pyright`) → Modulgrenzen (`lint-imports`) → Tests (`pytest --cov`)
-- [ ] Trigger: auf jedem Pull Request gegen `main`
-- [ ] `uv`-Dependency-Cache einrichten (Cache-Key auf Basis von `uv.lock`), damit die Pipeline nicht jedes Mal alles neu installiert
-- [ ] Hinweis: GitHub-gehostete Runner haben Docker bereits verfügbar — kein Docker-in-Docker-Setup nötig für die testcontainers-Tests
+- [x] `.github/workflows/ci.yml`: vier parallele Jobs (Lint/Typecheck/Modulgrenzen/Tests) statt ein sequenzieller Job — unabhängig voneinander, schnelleres Feedback, eigene benannte Checks in der PR-Übersicht
+- [x] Trigger: `pull_request` gegen `main` — läuft beim Öffnen des PRs und bei jedem weiteren Push, solange er offen ist (nicht erst nach Merge)
+- [x] `uv`-Caching über `astral-sh/setup-uv`s eingebautes `enable-cache: true` (statt manuellem Cache-Key-Aufbau)
+- [x] GitHub-gehostete Runner haben Docker bereits verfügbar — kein Docker-in-Docker-Setup nötig für die testcontainers-Tests
+- [ ] Über einen echten PR verifizieren, dass alle vier Jobs tatsächlich grün durchlaufen
 
 ## 3. Render-Setup
 - [ ] Render-Workspace (kostenloser Hobby-Tarif reicht für Solo-Entwicklung)

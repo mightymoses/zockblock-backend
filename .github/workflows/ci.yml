@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run pyright
+
+  module-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run lint-imports
+
+  # GitHub-hosted ubuntu runners already have a Docker daemon available, so
+  # testcontainers-python (used in tests/conftest.py) works without any
+  # extra Docker-in-Docker setup.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run pytest --cov=app --cov-report=term-missing
