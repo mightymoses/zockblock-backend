@@ -9,7 +9,11 @@ from sqlmodel import Session
 settings = get_settings()
 
 auth0 = Auth0FastAPI(domain=settings.auth0_domain, audience=settings.auth0_api_audience)
-AuthDep = Annotated[dict[Any, Any], Depends(auth0.require_auth())]
+
+# named separately (instead of inline in AuthDep) so tests can override this
+# exact callable via app.dependency_overrides
+require_auth = auth0.require_auth()
+AuthDep = Annotated[dict[Any, Any], Depends(require_auth)]
 
 
 def get_session() -> Generator[Session, None, None]:

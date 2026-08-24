@@ -1,0 +1,47 @@
+# Architektur-Migration: Clean-Stand für FastAPI-Backend
+
+Kontext: `CLAUDE.local.md` wurde von einem Java/Spring-Boot-Template (Tipply) auf den tatsächlichen Python/FastAPI-Stack von zockblock-backend überarbeitet (Technologie-Tabelle, Architektur, Anti-Patterns). Diese Checkliste bringt den bestehenden Code auf den dort festgelegten Zielstand.
+
+Ausgangslage: flaches `app/models/`, `app/routes/` (nach Schicht statt Feature sortiert), kein Service-/Repository-Layer, `SQLModel.metadata.create_all()` statt Migrationen, keine Tests, kein Logging-Setup, kein Typecheck/Modulgrenzen-Check.
+
+## 1. Schema-Migration (Alembic)
+- [x] Alembic als Dependency hinzufügen (`uv add alembic`)
+- [x] `alembic init` ausführen, `env.py` auf SQLModel-Metadata + `postgres_url` aus `app.config.Settings` verdrahten
+- [x] Erste Migration aus bestehendem `User`-Modell autogenerieren (`alembic revision --autogenerate -m "initial schema"`)
+- [x] `create_db_and_tables()` / `SQLModel.metadata.create_all()`-Aufruf aus `app/main.py` / `app/db/db.py` entfernen
+- [x] Migration lokal gegen die Compose-Postgres-DB testen (`alembic upgrade head`)
+
+## 2. `users`-Feature auf neue Struktur umziehen
+- [x] Verzeichnis `app/users/` anlegen mit `router.py`, `schemas.py`, `models.py`, `repository.py`, `exceptions.py`, `application/command/`, `application/query/`
+- [x] `app/models/users.py` → `app/users/models.py` verschieben
+- [x] Eigene Pydantic-Schemas `UserCreate` (Request) und `UserResponse` (Response) in `app/users/schemas.py` anlegen
+- [x] `app/users/repository.py`: reine DB-Zugriffsfunktionen (z. B. `get_by_external_auth_id`, `create`)
+- [x] `app/users/application/query/user_query_service.py`: `get_current_user`-Logik
+- [x] `app/users/application/command/user_command_service.py`: `create_user`-Logik
+- [x] `app/users/router.py`: Router nutzt nur noch Service-Funktionen, mapped über `model_validate(obj, from_attributes=True)` auf `UserResponse`
+- [x] `app/models/`, `app/routes/`-Ordner entfernen, sobald leer
+- [x] Import in `app/main.py` auf `app.users.router` anpassen
+
+## 3. Logging (structlog)
+- [x] `structlog` als Dependency hinzufügen
+- [x] Konfiguration (JSON in Produktion, Plain-Text lokal) zentral anlegen (z. B. `app/logging.py`), beim Start in `app/main.py` initialisieren
+
+## 4. Tests
+- [x] `pytest` + `testcontainers[postgres]` als Dev-Dependency hinzufügen
+- [x] `tests/`-Verzeichnis anlegen, pytest-Fixture für Postgres-Testcontainer + DB-Session
+- [x] Ersten Test für `users`-Feature schreiben (z. B. `create_user` → `get_current_user`)
+- [x] `pytest-cov` als Dev-Dependency hinzufügen, `[tool.coverage.run]` in `pyproject.toml` konfigurieren
+- [x] Router-Test mit `TestClient` ergänzen (`AuthDep`/`SessionDep` via `app.dependency_overrides` austauschen), inkl. 404-Fall
+
+## 5. Typecheck & Modulgrenzen
+- [x] `pyright` als Dev-Dependency hinzufügen, Konfiguration in `pyproject.toml` (`[tool.pyright]`) anlegen — `typeCheckingMode = "standard"` (strict: 132 Fehler, praktisch alles Rauschen aus SQLAlchemy/httpx/FastAPI-Typisierung, kein echter Mehrwert)
+- [x] `import-linter` als Dev-Dependency hinzufügen, Grundkonfiguration (`root_package = "app"`) in `pyproject.toml` — **noch kein Independence-Contract**, der wird erst sinnvoll, sobald ein zweites Feature neben `app.users` existiert (→ dann hier nachtragen)
+- [x] `pytest-archon` als Dev-Dependency hinzufügen, zwei Architektur-Regeln in `tests/test_architecture.py`: Repository darf Router/Service nicht importieren, Service darf Router nicht importieren (generisch über `app.*`, gilt für jedes künftige Feature)
+
+## 6. Aufräumen: `.env`-Ablage & README
+Beim Review-Durchgang gefunden: `config.py` lädt `.env` relativ zum Arbeitsverzeichnis (= Projekt-Root bei allen `uv run ...`-Befehlen), README sagte aber fälschlich "Inside the `app` directory" – dadurch lag `.env.example` in `app/` statt im Root, plus eine überflüssige `app/.env`-Karteileiche.
+- [x] `app/.env.example` nach `.env.example` (Projekt-Root) verschieben
+- [x] Überflüssige `app/.env` löschen (nicht versioniert, inhaltsgleich zur Root-`.env`)
+- [x] README: Setup-Schritt 2 auf Projekt-Root korrigieren
+- [x] README: Alembic-Migrationsschritt in "Development" ergänzen (ohne `alembic upgrade head` hat eine frische DB kein Schema mehr)
+- [x] README: Abschnitte für Tests (inkl. Hinweis auf laufendes Docker für testcontainers), Typecheck und Modulgrenzen-Check ergänzen

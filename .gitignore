@@ -11,3 +11,11 @@ wheels/
 
 # Environments files
 .env
+
+# Test artifacts
+.coverage
+.pytest_cache/
+
+# CLAUDE
+CLAUDE.local.md
+.claude/settings.local.json

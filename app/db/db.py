@@ -1,9 +1,5 @@
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import create_engine
 from app.config import get_settings
 
 settings = get_settings()
 engine = create_engine(settings.postgres_url)
-
-
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)

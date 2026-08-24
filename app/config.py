@@ -1,9 +1,12 @@
 from functools import lru_cache
+from typing import Literal
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    environment: Literal["local", "production"] = "local"
+
     auth0_domain: str = ""
     auth0_api_audience: str = ""
 

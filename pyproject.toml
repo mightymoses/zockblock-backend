@@ -5,18 +5,41 @@ description = "Backend for the zockblock app"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "alembic>=1.19.1",
     "auth0-fastapi-api>=1.0.0b7",
     "fastapi[standard]>=0.136.3",
     "psycopg2-binary>=2.9.12",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "sqlmodel>=0.0.38",
+    "structlog>=26.1.0",
 ]
 
 [tool.fastapi]
 entrypoint = "app.main:app"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.pyright]
+include = ["app", "tests"]
+typeCheckingMode = "standard"
+
+[tool.importlinter]
+root_package = "app"
+# no contracts yet — sinnvoll wird ein "independence"-Contract erst, sobald
+# es ein zweites Feature neben app.users gibt (siehe docs/task-checklists)
+
 [dependency-groups]
 dev = [
+    "import-linter>=2.13",
+    "pyright>=1.1.411",
+    "pytest>=9.1.1",
+    "pytest-archon>=0.0.7",
+    "pytest-cov>=7.1.0",
     "ruff>=0.15.16",
+    "testcontainers[postgres]>=4.15.0",
 ]
