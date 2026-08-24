@@ -1,23 +1,32 @@
 from collections.abc import Generator
+from functools import lru_cache
 from typing import Annotated, Any
 from app.config import get_settings
-from app.db.db import engine
-from fastapi import Depends
+from app.db.db import get_engine
+from fastapi import Depends, Request
 from fastapi_plugin import Auth0FastAPI
 from sqlmodel import Session
 
-settings = get_settings()
 
-auth0 = Auth0FastAPI(domain=settings.auth0_domain, audience=settings.auth0_api_audience)
+@lru_cache
+def get_auth0_client() -> Auth0FastAPI:
+    settings = get_settings()
+    return Auth0FastAPI(domain=settings.auth0_domain, audience=settings.auth0_api_audience)
 
-# named separately (instead of inline in AuthDep) so tests can override this
-# exact callable via app.dependency_overrides
-require_auth = auth0.require_auth()
+
+# a plain, importable function (instead of the closure auth0.require_auth()
+# returns) so tests can override this exact callable via
+# app.dependency_overrides, while still only constructing the Auth0 client
+# lazily on first real request instead of at import time
+async def require_auth(request: Request) -> dict[Any, Any]:
+    return await get_auth0_client().require_auth()(request)
+
+
 AuthDep = Annotated[dict[Any, Any], Depends(require_auth)]
 
 
 def get_session() -> Generator[Session, None, None]:
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         yield session
 
 
