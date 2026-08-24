@@ -14,6 +14,11 @@ def handle_user_not_found(request: Request, exc: UserNotFoundException) -> JSONR
     return JSONResponse(status_code=404, content={"detail": "User not found"})
 
 
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 api_router = APIRouter()
 api_router.include_router(users_router)
 app.include_router(api_router, prefix="/api")
