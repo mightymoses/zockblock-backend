@@ -17,17 +17,14 @@ Render, EU-Region (Frankfurt) wegen Auth0-EU-Tenant. Details/Preisrecherche sieh
 - [x] Trigger: `pull_request` gegen `main` — läuft beim Öffnen des PRs und bei jedem weiteren Push, solange er offen ist (nicht erst nach Merge)
 - [x] `uv`-Caching über `astral-sh/setup-uv`s eingebautes `enable-cache: true` (statt manuellem Cache-Key-Aufbau)
 - [x] GitHub-gehostete Runner haben Docker bereits verfügbar — kein Docker-in-Docker-Setup nötig für die testcontainers-Tests
-- [ ] Über einen echten PR verifizieren, dass alle vier Jobs tatsächlich grün durchlaufen
+- [x] Über einen echten PR verifizieren, dass alle vier Jobs tatsächlich grün durchlaufen — dabei zwei echte Bugs gefunden und behoben: `astral-sh/setup-uv@v9` existiert nicht als Tag (→ `v10.0.1`), und `app/db/db.py`/`app/dependencies.py` bauten DB-Engine und Auth0-Client beim Import statt lazy, was lokal nur wegen der (gitignoreten) `.env` nicht auffiel
 
-## 3. Render-Setup
-- [ ] Render-Workspace (kostenloser Hobby-Tarif reicht für Solo-Entwicklung)
-- [ ] Postgres-Instanz anlegen (Frankfurt/EU-Region, kleinste bezahlte Stufe — Free-Tier läuft nach 30 Tagen ab, ungeeignet für Dauerbetrieb)
-- [ ] Web-Service anlegen (Docker-Deploy aus dem `Dockerfile`, Starter-Tarif, EU-Region)
-- [ ] Umgebungsvariablen/Secrets in Render hinterlegen (`POSTGRES_*`, `AUTH0_*`, `ENVIRONMENT=production`)
-
-## 4. Deploy-Anbindung
-- [ ] Entscheiden: Render Auto-Deploy bei Push auf `main`, oder expliziter Deploy-Schritt am Ende des GitHub-Actions-Workflows
-- [ ] Entsprechend einrichten
-
-## 5. Migrationen beim Deploy
-- [ ] Render **Pre-Deploy Command** auf `uv run alembic upgrade head` setzen (läuft nach Build, vor Start — https://render.com/changelog/predeploy-command)
+## 3. Render-Setup, Deploy-Anbindung & Migrationen (via `render.yaml`-Blueprint)
+Zusammengelegt, weil Render Blueprints das alles in einer Datei abdecken (Infrastructure-as-Code
+statt Klick-Konfiguration im Dashboard).
+- [x] `app/config.py`: optionales `database_url`-Feld ergänzt, hat Vorrang vor den einzelnen `postgres_*`-Feldern — nötig, weil Render bei `fromDatabase` nur `user`/`password`/`database`/`connectionString` durchreicht, kein `host`/`port` einzeln
+- [x] `render.yaml` anlegen: Postgres-Instanz (Frankfurt, `basic-256mb`) + Web-Service (Docker, Frankfurt, `starter`), `healthCheckPath: /health`, `preDeployCommand: uv run alembic upgrade head` (Migrationen laufen so vor jedem Deploy)
+- [x] `autoDeployTrigger: checksPass` im Web-Service — deployt nur, wenn die GitHub-Status-Checks grün sind
+- [x] `.github/workflows/ci.yml`: zusätzlich auf `push` gegen `main` triggern (nicht nur `pull_request`), damit der Merge-Commit selbst Status-Checks bekommt, auf die `checksPass` warten kann
+- [ ] Blueprint einmalig im Render-Dashboard mit dem GitHub-Repo verbinden, dabei `AUTH0_DOMAIN`/`AUTH0_API_AUDIENCE` (als `sync: false` markiert) eintragen
+- [ ] Ersten Deploy abwarten/prüfen, `/health` extern (nicht mehr nur lokal) testen
