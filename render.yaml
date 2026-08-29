@@ -1,0 +1,25 @@
+databases:
+  - name: zockblock-postgres
+    region: frankfurt
+    plan: basic-256mb
+
+services:
+  - name: zockblock-backend
+    type: web
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    healthCheckPath: /health
+    preDeployCommand: uv run alembic upgrade head
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zockblock-postgres
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: AUTH0_DOMAIN
+        sync: false
+      - key: AUTH0_API_AUDIENCE
+        sync: false
