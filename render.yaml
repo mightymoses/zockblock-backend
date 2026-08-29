@@ -10,7 +10,7 @@ services:
     region: frankfurt
     plan: starter
     healthCheckPath: /health
-    preDeployCommand: uv run alembic upgrade head
+    preDeployCommand: alembic upgrade head
     autoDeployTrigger: checksPass
     envVars:
       - key: DATABASE_URL

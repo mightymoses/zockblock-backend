@@ -23,8 +23,8 @@ Render, EU-Region (Frankfurt) wegen Auth0-EU-Tenant. Details/Preisrecherche sieh
 Zusammengelegt, weil Render Blueprints das alles in einer Datei abdecken (Infrastructure-as-Code
 statt Klick-Konfiguration im Dashboard).
 - [x] `app/config.py`: optionales `database_url`-Feld ergänzt, hat Vorrang vor den einzelnen `postgres_*`-Feldern — nötig, weil Render bei `fromDatabase` nur `user`/`password`/`database`/`connectionString` durchreicht, kein `host`/`port` einzeln
-- [x] `render.yaml` anlegen: Postgres-Instanz (Frankfurt, `basic-256mb`) + Web-Service (Docker, Frankfurt, `starter`), `healthCheckPath: /health`, `preDeployCommand: uv run alembic upgrade head` (Migrationen laufen so vor jedem Deploy)
+- [x] `render.yaml` anlegen: Postgres-Instanz (Frankfurt, `basic-256mb`) + Web-Service (Docker, Frankfurt, `starter`), `healthCheckPath: /health`, `preDeployCommand` mit den Migrationen (Migrationen laufen so vor jedem Deploy)
 - [x] `autoDeployTrigger: checksPass` im Web-Service — deployt nur, wenn die GitHub-Status-Checks grün sind
 - [x] `.github/workflows/ci.yml`: zusätzlich auf `push` gegen `main` triggern (nicht nur `pull_request`), damit der Merge-Commit selbst Status-Checks bekommt, auf die `checksPass` warten kann
-- [ ] Blueprint einmalig im Render-Dashboard mit dem GitHub-Repo verbinden, dabei `AUTH0_DOMAIN`/`AUTH0_API_AUDIENCE` (als `sync: false` markiert) eintragen
+- [x] Blueprint einmalig im Render-Dashboard mit dem GitHub-Repo verbunden, `AUTH0_DOMAIN`/`AUTH0_API_AUDIENCE` eingetragen — dabei Bug gefunden: `preDeployCommand: uv run alembic upgrade head` schlug fehl (Exit 128), weil `uv` nur in der Docker-Build-Stage liegt, nicht im schlanken Runtime-Image. Fix: `alembic upgrade head` direkt (liegt im venv, das per `PATH` aktiv ist — genau wie `fastapi` im `CMD`), lokal gegen die Compose-DB verifiziert
 - [ ] Ersten Deploy abwarten/prüfen, `/health` extern (nicht mehr nur lokal) testen
