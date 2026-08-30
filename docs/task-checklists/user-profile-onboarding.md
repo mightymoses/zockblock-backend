@@ -51,26 +51,26 @@ und eine Foto-Upload-Anbindung erweitert.
 - Presigned Upload akzeptiert nur `image/jpeg`, `image/png`, `image/webp` (Allowlist gegen Missbrauch als Datei-Host). HEIC (iOS-Kamera-Standard) wird clientseitig vor dem Upload zu JPEG konvertiert – Backend-Thema erledigt sich damit von selbst.
 - `avatar_url` beim Speichern validieren: muss mit `settings.r2_public_base_url` beginnen (verhindert, dass Nutzer beliebige externe URLs als Avatar hinterlegen).
 - Username-Format: 3–20 Zeichen, Buchstaben/Zahlen/`.`/`_`/`-`, erstes und letztes Zeichen muss alphanumerisch sein, keine zwei Sonderzeichen hintereinander. Als Pydantic-`pattern` (zusätzlich `min_length=3, max_length=20` für klare Längen-Fehlermeldungen) auf dem Request-Schema:
-  `^(?!.*[._-]{2})[a-zA-Z0-9][a-zA-Z0-9._-]{1,18}[a-zA-Z0-9]$`
+  `^[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*$` (kein Lookahead – pydantic-core nutzt eine Rust-Regex-Engine ohne Lookahead/Lookbehind-Unterstützung; Konstruktion über abwechselnde alphanumerische Blöcke/Sonderzeichen erreicht dieselbe Regel)
 - Live-Verfügbarkeitsprüfung für Username wird mitgebaut (`GET /users/username-availability`).
 
 **Dateien:**
-- [ ] `schemas.py`:
-  - `UserCreate` erweitern: `username` (mit Format-Constraint), `animalAssetName`, `avatarColor`, `bioLine1`, `bioLine2`, `avatarUrl` (alle außer `username` optional)
+- [x] `schemas.py`:
+  - `UserCreate` erweitert: `username` (mit Format-Constraint), `animalAssetName`, `avatarColor`, `bioLine1`, `bioLine2`, `avatarUrl` (alle außer `username` optional)
   - `UserUpdate` neu: alle Felder optional, gleiche Constraints wie `UserCreate`
-  - `UserResponse` um neue Felder erweitern
+  - `UserResponse` um neue Felder erweitert
   - `AvatarUploadRequest` neu: `contentType` (Literal auf die 3 erlaubten Typen)
   - `AvatarUploadResponse` neu: `uploadUrl`, `avatarUrl`
   - `UsernameAvailabilityResponse` neu: `isAvailable: bool`
-- [ ] `router.py`:
-  - `POST /users/` (bestehend) auf neue Felder erweitern
-  - `PATCH /users/current` neu
+- [x] `router.py`:
+  - `POST /users/` (bestehend) auf neue Felder erweitert
+  - `PATCH /users/current` neu (holt den User erst über den Query-Service, dann Command-Service)
   - `POST /users/current/avatar-upload-url` neu (nur `AuthDep`, kein `SessionDep`)
-  - `GET /users/username-availability?username=` neu
-- [ ] `user_command_service.py`: `create_user` erweitern, `update_user` neu (inkl. `avatar_url`-Präfix-Validierung), `request_avatar_upload_url` neu (ruft nur `storage.generate_presigned_upload_url`, keine DB)
-- [ ] `user_query_service.py`: `is_username_available` neu
-- [ ] `repository.py`: `save(session, user)` neu (analog `add`, für PATCH), `exists_by_username(session, username)` neu
-- [ ] `exceptions.py`: `UsernameAlreadyTakenException` – proaktiv geprüft (bessere UX) **und** als Fallback bei `IntegrityError` aus dem Commit gefangen (Race-Condition-Schutz), Handler in `main.py` registrieren (409)
+  - `GET /users/username-availability?username=` neu (mit `AuthDep`, verhindert anonymes Scraping)
+- [x] `user_command_service.py`: `create_user` erweitert, `update_user` neu (inkl. `avatar_url`-Präfix-Validierung), `request_avatar_upload_url` neu (ruft nur `storage.generate_presigned_upload_url`, keine DB)
+- [x] `user_query_service.py`: `is_username_available` neu
+- [x] `repository.py`: `exists_by_username(session, username)` neu – kein separates `save()`: für ein bereits getracktes Objekt macht `add()` + `flush()` dasselbe wie beim Neuanlegen, kein zweites, identisches `save()` nötig
+- [x] `exceptions.py`: `UsernameAlreadyTakenException` – proaktiv geprüft (bessere UX) **und** als Fallback bei `IntegrityError` aus dem Commit gefangen (Race-Condition-Schutz); zusätzlich `InvalidAvatarUrlException` für die `avatar_url`-Präfix-Validierung. Beide Handler in `main.py` registriert (409 bzw. 400)
 
 ## 4. Tests
 - [ ] Tests für erweiterten `POST /users/`, neuen `PATCH /users/current`, `avatar-upload-url`-Endpoint (Storage-Aufruf mocken statt echtem R2-Call)

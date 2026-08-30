@@ -11,3 +11,8 @@ def add(session: Session, user: User) -> User:
     session.add(user)
     session.flush()
     return user
+
+
+def exists_by_username(session: Session, username: str) -> bool:
+    statement = select(User.id).where(User.username == username)
+    return session.exec(statement).first() is not None
