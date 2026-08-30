@@ -1,27 +1,29 @@
 // Use DBML to define your database structure
 // Docs: https://dbml.dbdiagram.io/docs
 
-Table users {
-  id integer [pk, increment]
-  updated_at timestamp [not null]
+Table user {
+  id uuid [pk]
   external_auth_id varchar [unique]
-  username varchar [not null]
+  username varchar [not null, unique]
   avatar_url varchar
   animal_asset_name varchar
   avatar_color integer
-  owner_user_id integer [ref: > users.id]
+  bio_line_1 varchar
+  bio_line_2 varchar
+  owner_user_id uuid [ref: > user.id]
   created_at timestamp [not null]
+  updated_at timestamp [not null]
   deleted_at timestamp
 }
 
 Table session_participants {
-  player_id integer [pk, ref: > users.id]
+  player_id uuid [pk, ref: > user.id]
   session_id integer [pk, ref: > sessions.id]
   seat_index integer
 }
 
 Table session_likes {
-  user_id integer [pk, ref: > users.id]
+  user_id uuid [pk, ref: > user.id]
   session_id integer [pk, ref: > sessions.id]
   created_at timestamp [not null]
 }
@@ -29,7 +31,7 @@ Table session_likes {
 Table session_comments {
   id integer [pk, increment]
   session_id integer [not null, ref: > sessions.id]
-  user_id integer [not null, ref: > users.id]
+  user_id uuid [not null, ref: > user.id]
   parent_comment_id integer [ref: > session_comments.id]
   content text [not null]
   is_edited boolean [not null]
@@ -38,7 +40,7 @@ Table session_comments {
 }
 
 Table comment_likes {
-  user_id integer [pk, ref: > users.id]
+  user_id uuid [pk, ref: > user.id]
   comment_id integer [pk, ref: > session_comments.id]
   created_at timestamp [not null]
 }
@@ -69,7 +71,7 @@ Table session_images {
 Table kniffel_events {
   id integer [pk, increment]
   session_id integer [not null, ref: > sessions.id]
-  user_id integer [not null, ref: > users.id]
+  user_id uuid [not null, ref: > user.id]
   category_key varchar [not null]
   points integer
   is_crossed_out boolean [not null, default: false]
@@ -79,7 +81,7 @@ Table kniffel_events {
 
 Table kniffel_session_results {
   session_id integer [pk, ref: > sessions.id]
-  user_id integer [pk, ref: > users.id]
+  user_id uuid [pk, ref: > user.id]
   rank integer [not null]
   total_points integer
   upper_points integer
@@ -104,7 +106,7 @@ Table kniffel_session_results {
 }
 
 Table ratings {
-  user_id integer [pk, ref: > users.id]
+  user_id uuid [pk, ref: > user.id]
   game_definition_id integer [pk, ref: > game_definitions.id]
   mu real [not null]
   sigma real [not null]
@@ -113,7 +115,7 @@ Table ratings {
 }
 
 Table rating_history {
-  user_id integer [pk, ref: > users.id]
+  user_id uuid [pk, ref: > user.id]
   session_id integer [pk, ref: > sessions.id]
   game_definition_id integer [not null, ref: > game_definitions.id]
   mu real [not null]
@@ -123,7 +125,7 @@ Table rating_history {
 }
 
 Table kniffel_stats {
-  user_id integer [pk, ref: > users.id]
+  user_id integer [pk]
   mode varchar [pk]
 
   // Streaks
@@ -222,8 +224,8 @@ Table kniffel_stats {
 }
 
 Table friendships {
-  requester_id integer [pk, ref: > users.id]
-  receiver_id integer [pk, ref: > users.id]
+  requester_id uuid [pk, ref: > user.id]
+  receiver_id uuid [pk, ref: > user.id]
   status varchar [not null]
   created_at timestamp [not null]
   updated_at timestamp [not null]
