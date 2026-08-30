@@ -73,5 +73,7 @@ und eine Foto-Upload-Anbindung erweitert.
 - [x] `exceptions.py`: `UsernameAlreadyTakenException` – proaktiv geprüft (bessere UX) **und** als Fallback bei `IntegrityError` aus dem Commit gefangen (Race-Condition-Schutz); zusätzlich `InvalidAvatarUrlException` für die `avatar_url`-Präfix-Validierung. Beide Handler in `main.py` registriert (409 bzw. 400)
 
 ## 4. Tests
-- [ ] Tests für erweiterten `POST /users/`, neuen `PATCH /users/current`, `avatar-upload-url`-Endpoint (Storage-Aufruf mocken statt echtem R2-Call)
-- [ ] Test für `UsernameAlreadyTakenException` (409 bei doppeltem Username)
+- [x] Beim Schreiben der Tests einen echten kleinen Bug gefunden: `_validate_avatar_url` prüfte `avatar_url.startswith(r2_public_base_url)` – bei fehlender Konfiguration (leerer String, Default) matched das immer, die Prüfung wäre lautlos wirkungslos gewesen. Jetzt fail-closed: ohne konfigurierte `r2_public_base_url` wird jede `avatar_url` abgelehnt.
+- [x] `tests/conftest.py`: `R2_PUBLIC_BASE_URL`-Test-Default ergänzt (analog `POSTGRES_*`)
+- [x] `tests/users/test_user_router.py`: 13 neue Tests – volle Profilfelder, doppelter Username (409) bei Create/Update, ungültiges Username-Format (422), ungültige `avatarUrl` (400), PATCH Teil-Update, PATCH `null` löscht Foto, Avatar-Upload-URL (Storage gemockt via `monkeypatch`), nicht erlaubter Content-Type (422), Username-Verfügbarkeit
+- [x] `test_user_flow.py` bewusst unangetastet gelassen (kein Mehrwert, alles über Router beobachtbar)

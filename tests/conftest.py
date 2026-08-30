@@ -18,6 +18,10 @@ from app.main import app
 # context manager (see `engine` below) get cleaned up regardless.
 os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
 
+# lets tests set a valid avatar_url without needing a real R2 bucket -
+# _validate_avatar_url only checks the prefix, never actually reaches R2
+os.environ.setdefault("R2_PUBLIC_BASE_URL", "https://pub-test.example.r2.dev")
+
 
 @pytest.fixture(scope="session")
 def engine() -> Generator[Engine, None, None]:

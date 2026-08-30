@@ -85,7 +85,11 @@ def request_avatar_upload_url(external_auth_id: str, content_type: str) -> tuple
 
 
 def _validate_avatar_url(avatar_url: str | None) -> None:
-    if avatar_url is not None and not avatar_url.startswith(get_settings().r2_public_base_url):
+    if avatar_url is None:
+        return
+
+    r2_public_base_url = get_settings().r2_public_base_url
+    if not r2_public_base_url or not avatar_url.startswith(r2_public_base_url):
         raise InvalidAvatarUrlException()
 
 
