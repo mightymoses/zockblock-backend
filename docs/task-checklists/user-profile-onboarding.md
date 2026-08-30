@@ -33,25 +33,44 @@ und eine Foto-Upload-Anbindung erweitert.
 - [x] `docs/db/schema.dbml` aktualisiert: `id` auf `uuid`, Tabellenname von `users` auf `user` korrigiert, `username [unique]` markiert, neue Felder ergänzt, alle FK-Spalten, die auf `user.id` zeigen (`session_participants`, `session_likes`, `session_comments`, `comment_likes`, `kniffel_events`, `kniffel_session_results`, `ratings`, `rating_history`, `friendships`), von `integer` auf `uuid` korrigiert – `kniffel_stats.user_id` bewusst nicht angefasst (hatte schon vorher keine `ref`-Annotation, kein echtes Feature bisher)
 
 ## 2. Foto-Storage-Anbindung (Cloudflare R2)
-- [ ] Cloudflare R2 Bucket anlegen (manueller Schritt im Cloudflare-Dashboard, EU Location Hint setzen)
-- [ ] `boto3` als Dependency ergänzen: `uv add boto3`
-- [ ] `app/config.py`: neue Settings (`r2_endpoint_url`, `r2_bucket_name`, `r2_access_key_id`, `r2_secret_access_key`, `r2_public_base_url`, `presigned_url_expiry_seconds` mit sinnvollem Default)
-- [ ] `.env.example` um die neuen Variablen ergänzen
-- [ ] `app/common/storage.py` anlegen (erstes Modul in `common/`): lazy boto3-S3-Client (analog `get_auth0_client`, per `lru_cache`), Funktion `generate_presigned_upload_url(key, content_type) -> (upload_url, public_url)`
-- [ ] `app/dependencies.py`: `StorageDep` ergänzen
-- [ ] `render.yaml`: neue Secret-`envVars` (`sync: false`) ergänzen, in Render-Dashboard eintragen
+- [x] Cloudflare R2 Bucket angelegt (Account API Token, Object Read & Write, auf den Bucket beschränkt; Public Development URL aktiviert für öffentlichen Lesezugriff)
+- [x] `boto3` als Dependency ergänzt: `uv add boto3`
+- [x] `app/config.py`: neue Settings (`r2_endpoint_url`, `r2_bucket_name`, `r2_access_key_id`, `r2_secret_access_key`, `r2_public_base_url`, `presigned_url_expiry_seconds`, Default 300)
+- [x] `.env.example` um die neuen Variablen ergänzt
+- [x] `app/common/storage.py` angelegt (erstes Modul in `common/`): lazy boto3-S3-Client (analog `get_auth0_client`, per `lru_cache`), Funktion `generate_presigned_upload_url(key, content_type) -> (upload_url, public_url)` – bewusst **kein** `StorageDep` in `dependencies.py`, da der S3-Client wie der Auth0-Client ein zustandsloser Singleton ohne Pro-Request-Zustand ist (Services rufen `storage.generate_presigned_upload_url(...)` direkt)
+- [x] `render.yaml`: neue Secret-`envVars` (`sync: false`) ergänzt
+- [ ] Tatsächliche Werte im Render-Dashboard eintragen (offen bis zum nächsten Deploy)
 - [ ] Überlegen (kann auch später): Presigned PUT erzwingt kein Size-/Content-Type-Limit serverseitig – ggf. später auf Presigned POST mit Policy umstellen, falls nötig
 
 ## 3. Endpunkte: User-Profil
-- [ ] `schemas.py`: `UserCreate` um `animalAssetName`, `avatarColor`, `bioLine1`, `bioLine2`, `avatarUrl` erweitern (alle bis auf `username` optional)
-- [ ] `UserUpdate`-Schema neu (alle Felder optional) für PATCH
-- [ ] `UserResponse` um neue Felder erweitern
-- [ ] `POST /users/` (bestehend) auf neue Felder erweitern
-- [ ] `PATCH /users/current` neu: Profil nachträglich bearbeiten
-- [ ] `POST /users/current/avatar-upload-url` neu: liefert Presigned-Upload-URL + finale `avatar_url` zurück (reiner Storage-Aufruf, kein DB-Write)
-- [ ] `user_command_service.py`: `create_user` erweitern, `update_user` neu, `request_avatar_upload_url` neu
-- [ ] `repository.py`: Update-Funktion ergänzen (reiner Datenzugriff)
-- [ ] `exceptions.py`: `UsernameAlreadyTakenException` (bei Unique-Constraint-Verletzung beim Anlegen), Handler in `main.py` registrieren (409)
+
+**Entscheidungen aus der Planung:**
+- Kein gemeinsamer Endpunkt mit dem später geplanten "verwaltetes Profil anlegen" – unterschiedliche Identitätsquelle (eigenes Auth0-Token vs. Owner-Token), sicherheitsrelevante Verzweigung gehört nicht in einen Endpunkt.
+- PATCH-Semantik: `body.model_dump(exclude_unset=True)` – weggelassene Felder bleiben unangetastet, explizites `null` löscht (z. B. Foto entfernen → Rückfall auf Tier-Avatar).
+- `avatar-upload-url` nutzt `external_auth_id` als Storage-Key-Präfix (nicht `user.id`), da Foto schon vor dem finalen `POST /users/` gewählt werden kann – Endpunkt braucht nur `AuthDep`, keine DB-Session.
+- Presigned Upload akzeptiert nur `image/jpeg`, `image/png`, `image/webp` (Allowlist gegen Missbrauch als Datei-Host). HEIC (iOS-Kamera-Standard) wird clientseitig vor dem Upload zu JPEG konvertiert – Backend-Thema erledigt sich damit von selbst.
+- `avatar_url` beim Speichern validieren: muss mit `settings.r2_public_base_url` beginnen (verhindert, dass Nutzer beliebige externe URLs als Avatar hinterlegen).
+- Username-Format: 3–20 Zeichen, Buchstaben/Zahlen/`.`/`_`/`-`, erstes und letztes Zeichen muss alphanumerisch sein, keine zwei Sonderzeichen hintereinander. Als Pydantic-`pattern` (zusätzlich `min_length=3, max_length=20` für klare Längen-Fehlermeldungen) auf dem Request-Schema:
+  `^(?!.*[._-]{2})[a-zA-Z0-9][a-zA-Z0-9._-]{1,18}[a-zA-Z0-9]$`
+- Live-Verfügbarkeitsprüfung für Username wird mitgebaut (`GET /users/username-availability`).
+
+**Dateien:**
+- [ ] `schemas.py`:
+  - `UserCreate` erweitern: `username` (mit Format-Constraint), `animalAssetName`, `avatarColor`, `bioLine1`, `bioLine2`, `avatarUrl` (alle außer `username` optional)
+  - `UserUpdate` neu: alle Felder optional, gleiche Constraints wie `UserCreate`
+  - `UserResponse` um neue Felder erweitern
+  - `AvatarUploadRequest` neu: `contentType` (Literal auf die 3 erlaubten Typen)
+  - `AvatarUploadResponse` neu: `uploadUrl`, `avatarUrl`
+  - `UsernameAvailabilityResponse` neu: `isAvailable: bool`
+- [ ] `router.py`:
+  - `POST /users/` (bestehend) auf neue Felder erweitern
+  - `PATCH /users/current` neu
+  - `POST /users/current/avatar-upload-url` neu (nur `AuthDep`, kein `SessionDep`)
+  - `GET /users/username-availability?username=` neu
+- [ ] `user_command_service.py`: `create_user` erweitern, `update_user` neu (inkl. `avatar_url`-Präfix-Validierung), `request_avatar_upload_url` neu (ruft nur `storage.generate_presigned_upload_url`, keine DB)
+- [ ] `user_query_service.py`: `is_username_available` neu
+- [ ] `repository.py`: `save(session, user)` neu (analog `add`, für PATCH), `exists_by_username(session, username)` neu
+- [ ] `exceptions.py`: `UsernameAlreadyTakenException` – proaktiv geprüft (bessere UX) **und** als Fallback bei `IntegrityError` aus dem Commit gefangen (Race-Condition-Schutz), Handler in `main.py` registrieren (409)
 
 ## 4. Tests
 - [ ] Tests für erweiterten `POST /users/`, neuen `PATCH /users/current`, `avatar-upload-url`-Endpoint (Storage-Aufruf mocken statt echtem R2-Call)
