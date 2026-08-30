@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     postgres_user: str = ""
     postgres_password: str = ""
 
+    r2_endpoint_url: str = ""
+    r2_bucket_name: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_public_base_url: str = ""
+    presigned_url_expiry_seconds: int = 300
+
     @computed_field
     @property
     def postgres_url(self) -> str:

@@ -11,3 +11,7 @@ def get_current_user(session: Session, external_auth_id: str) -> User:
         raise UserNotFoundException()
 
     return user
+
+
+def is_username_available(session: Session, username: str) -> bool:
+    return not repository.exists_by_username(session, username)
