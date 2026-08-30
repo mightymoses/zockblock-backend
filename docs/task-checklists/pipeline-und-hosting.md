@@ -27,4 +27,4 @@ statt Klick-Konfiguration im Dashboard).
 - [x] `autoDeployTrigger: checksPass` im Web-Service — deployt nur, wenn die GitHub-Status-Checks grün sind
 - [x] `.github/workflows/ci.yml`: zusätzlich auf `push` gegen `main` triggern (nicht nur `pull_request`), damit der Merge-Commit selbst Status-Checks bekommt, auf die `checksPass` warten kann
 - [x] Blueprint einmalig im Render-Dashboard mit dem GitHub-Repo verbunden, `AUTH0_DOMAIN`/`AUTH0_API_AUDIENCE` eingetragen — dabei Bug gefunden: `preDeployCommand: uv run alembic upgrade head` schlug fehl (Exit 128), weil `uv` nur in der Docker-Build-Stage liegt, nicht im schlanken Runtime-Image. Fix: `alembic upgrade head` direkt (liegt im venv, das per `PATH` aktiv ist — genau wie `fastapi` im `CMD`), lokal gegen die Compose-DB verifiziert
-- [ ] Ersten Deploy abwarten/prüfen, `/health` extern (nicht mehr nur lokal) testen
+- [x] Ersten Deploy abwarten/prüfen, `/health` extern (nicht mehr nur lokal) testen
