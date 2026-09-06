@@ -28,3 +28,16 @@ statt Klick-Konfiguration im Dashboard).
 - [x] `.github/workflows/ci.yml`: zusätzlich auf `push` gegen `main` triggern (nicht nur `pull_request`), damit der Merge-Commit selbst Status-Checks bekommt, auf die `checksPass` warten kann
 - [x] Blueprint einmalig im Render-Dashboard mit dem GitHub-Repo verbunden, `AUTH0_DOMAIN`/`AUTH0_API_AUDIENCE` eingetragen — dabei Bug gefunden: `preDeployCommand: uv run alembic upgrade head` schlug fehl (Exit 128), weil `uv` nur in der Docker-Build-Stage liegt, nicht im schlanken Runtime-Image. Fix: `alembic upgrade head` direkt (liegt im venv, das per `PATH` aktiv ist — genau wie `fastapi` im `CMD`), lokal gegen die Compose-DB verifiziert
 - [x] Ersten Deploy abwarten/prüfen, `/health` extern (nicht mehr nur lokal) testen
+
+## 4. Auto-Deploy hat nach den ersten Merges nicht ausgelöst
+- [x] Bug gefunden: `autoDeployTrigger: checksPass` war korrekt konfiguriert, CI lief auf `main`
+  bei jedem Merge (PR #2–#4) grün durch – trotzdem kein Eintrag im Render-Events-Tab. Ursache:
+  Die Render-GitHub-App war gar nicht (mehr) auf dem GitHub-Account installiert (fehlte unter
+  "Installed GitHub Apps") – Render bekam dadurch nie einen Webhook für die Pushes auf `main`
+- [x] Fix: GitHub-App über Render neu verbunden (Dashboard → "New +" → Web Service → Repo-Auswahl
+  → "Configure GitHub App permissions"-Link), danach tauchte Render wieder unter "Installed GitHub
+  Apps" auf
+- [x] Da Webhooks Punkt-in-der-Zeit-Events sind, gab's kein automatisches Nachholen der verpassten
+  Deploys – einmalig manuell über "Manual Deploy" auf den aktuellen `main`-Stand deployt
+- [ ] Eigentliche Verifikation steht noch aus: erst der *nächste* echte Merge zeigt, ob
+  Auto-Deploy jetzt wirklich wieder greift (im Events-Tab nach dem nächsten Merge prüfen)
