@@ -43,6 +43,59 @@ def test_create_user_with_full_profile_fields(client: TestClient):
     assert body["avatarUrl"] == "https://pub-test.example.r2.dev/avatars/x/1.jpg"
 
 
+def test_create_user_defaults_to_animal_mode(client: TestClient):
+    response = client.post("/api/users/", json={"username": "alice"})
+
+    assert response.status_code == 200
+    assert response.json()["avatarMode"] == "animal"
+
+
+def test_create_user_with_photo_mode_and_avatar_url_succeeds(client: TestClient):
+    response = client.post(
+        "/api/users/",
+        json={
+            "username": "alice",
+            "avatarMode": "photo",
+            "avatarUrl": "https://pub-test.example.r2.dev/avatars/x/1.jpg",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["avatarMode"] == "photo"
+
+
+def test_create_user_fails_with_photo_mode_and_no_avatar_url(client: TestClient):
+    response = client.post("/api/users/", json={"username": "alice", "avatarMode": "photo"})
+
+    assert response.status_code == 400
+
+
+def test_update_user_fails_switching_to_photo_mode_without_avatar_url(client: TestClient):
+    client.post("/api/users/", json={"username": "alice"})
+
+    response = client.patch("/api/users/current", json={"avatarMode": "photo"})
+
+    assert response.status_code == 400
+
+
+def test_update_user_switching_to_animal_mode_keeps_avatar_url(client: TestClient):
+    client.post(
+        "/api/users/",
+        json={
+            "username": "alice",
+            "avatarMode": "photo",
+            "avatarUrl": "https://pub-test.example.r2.dev/avatars/x/1.jpg",
+        },
+    )
+
+    response = client.patch("/api/users/current", json={"avatarMode": "animal"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["avatarMode"] == "animal"
+    assert body["avatarUrl"] == "https://pub-test.example.r2.dev/avatars/x/1.jpg"
+
+
 def test_create_user_fails_with_duplicate_username(client: TestClient, session: Session):
     user_command_service.create_user(session, username="taken", external_auth_id="auth0|someone-else")
 

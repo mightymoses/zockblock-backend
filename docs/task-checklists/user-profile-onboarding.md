@@ -77,3 +77,43 @@ und eine Foto-Upload-Anbindung erweitert.
 - [x] `tests/conftest.py`: `R2_PUBLIC_BASE_URL`-Test-Default ergänzt (analog `POSTGRES_*`)
 - [x] `tests/users/test_user_router.py`: 13 neue Tests – volle Profilfelder, doppelter Username (409) bei Create/Update, ungültiges Username-Format (422), ungültige `avatarUrl` (400), PATCH Teil-Update, PATCH `null` löscht Foto, Avatar-Upload-URL (Storage gemockt via `monkeypatch`), nicht erlaubter Content-Type (422), Username-Verfügbarkeit
 - [x] `test_user_flow.py` bewusst unangetastet gelassen (kein Mehrwert, alles über Router beobachtbar)
+
+## 5. Avatar-Anzeige-Präferenz (Tier vs. Foto)
+
+Nachtrag: Laut UI-Mockup gibt es einen expliziten Switch ("Tier" / "Foto"), keine reine
+Ableitung aus "ist `avatar_url` gesetzt". Braucht ein eigenes Feld.
+
+**Entscheidungen aus der Planung:**
+- Neues Feld `avatar_mode`, Werte `"animal"` / `"photo"`, Default `"animal"`. Im Model
+  (`models.py`) schlichter `str` (analog `content_type` beim Avatar-Upload: Literal-Validierung
+  nur an der Schema-Grenze, nicht im DB-Feld)
+- Beim Zurückschalten auf "animal" bleibt `avatar_url` gespeichert (kein Datenverlust, kein
+  Re-Upload beim Zurückschalten auf "photo" nötig). Foto explizit löschen bleibt eine separate,
+  unabhängige Aktion (`PATCH { avatarUrl: null }`)
+- Invariante: `avatar_mode == "photo"` erfordert `avatar_url != null` – **ein** gemeinsamer Ort für
+  beide Endpunkte statt aufgeteilt: `_validate_avatar_mode(user)` im Command-Service, aufgerufen
+  nach dem Zusammenbauen des `User`-Objekts (Create: frisch konstruiert; Update: nach dem Merge
+  der Änderungen), bei Verstoß `InvalidAvatarModeException` → 400 in beiden Fällen. Kein separater
+  Pydantic-`model_validator` – sonst hätte dieselbe Regel bei Create (422) und Update (400)
+  unterschiedliche Fehlerformen. Konsistent mit der bestehenden `avatar_url`-Präfix-Prüfung, die
+  aus demselben Grund auch komplett im Service liegt statt in Pydantic.
+
+**Dateien:**
+- [x] `app/users/models.py`: `avatar_mode: str = Field(default="animal")` – bewusst **ohne**
+  `max_length`: Der Wertebereich wird ohnehin nur über das Pydantic-`Literal` kontrolliert, ein
+  `max_length` hätte dem Vorteil des plain `str` (migrationsfrei neue Modi ergänzen) im Weg
+  gestanden
+- [x] Migration generiert & angewendet (`add avatar_mode to user`), mit `server_default='animal'`
+  fürs Backfill bestehender Zeilen – verifiziert per `\d "user"`
+- [x] `docs/db/schema.dbml` nachgezogen
+- [x] `app/users/schemas.py`: `avatar_mode: Literal["animal", "photo"] = "animal"` auf
+  `UserCreate`/`UserUpdate`/`UserResponse` (kein natives Postgres-`ENUM`, nur `Literal` auf
+  Pydantic-Ebene – analog `content_type`, spart `ALTER TYPE`-Migrationen bei neuen Werten)
+- [x] `app/users/exceptions.py`: `InvalidAvatarModeException`, Handler in `main.py` (400)
+- [x] `user_command_service.py`: `_validate_avatar_mode(user)` neu, aus `create_user` **und**
+  `update_user` aufgerufen (ein gemeinsamer Ort, siehe oben); `avatar_mode`-Parameter dort als
+  `Literal["animal", "photo"]` statt losem `str` getypt – rein statische Absicherung für interne
+  Aufrufer außerhalb des Routers, keine zusätzliche Laufzeitprüfung nötig
+- [x] Tests: Create mit `photo` ohne `avatarUrl` → 400; Create mit `photo` + `avatarUrl` → 200;
+  PATCH auf `photo` ohne vorhandene `avatarUrl` → 400; Wechsel zu `animal` behält `avatarUrl`;
+  Default `animal` bei Create ohne explizites Feld

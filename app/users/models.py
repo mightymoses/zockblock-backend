@@ -13,6 +13,7 @@ class User(SQLModel, table=True):
     external_auth_id: str | None = Field(default=None, unique=True, index=True, min_length=6)
     username: str = Field(unique=True, index=True, max_length=255)
     avatar_url: str | None = Field(default=None)
+    avatar_mode: str = Field(default="animal")
     animal_asset_name: str | None = Field(default=None, max_length=100)
     avatar_color: int | None = Field(default=None)
     bio_line_1: str | None = Field(default=None, max_length=100)
