@@ -13,6 +13,8 @@ USERNAME_PATTERN = r"^[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*$"
 
 ALLOWED_AVATAR_CONTENT_TYPES = Literal["image/jpeg", "image/png", "image/webp"]
 
+AVATAR_MODES = Literal["animal", "photo"]
+
 
 class UserCreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -23,6 +25,7 @@ class UserCreate(BaseModel):
     bio_line_1: str | None = Field(default=None, max_length=100)
     bio_line_2: str | None = Field(default=None, max_length=100)
     avatar_url: str | None = None
+    avatar_mode: AVATAR_MODES = "animal"
 
 
 class UserUpdate(BaseModel):
@@ -34,6 +37,7 @@ class UserUpdate(BaseModel):
     bio_line_1: str | None = Field(default=None, max_length=100)
     bio_line_2: str | None = Field(default=None, max_length=100)
     avatar_url: str | None = None
+    avatar_mode: AVATAR_MODES | None = None
 
 
 class UserResponse(BaseModel):
@@ -46,6 +50,7 @@ class UserResponse(BaseModel):
     bio_line_1: str | None
     bio_line_2: str | None
     avatar_url: str | None
+    avatar_mode: AVATAR_MODES
     created_at: datetime
     updated_at: datetime
 

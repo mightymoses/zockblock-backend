@@ -6,6 +6,7 @@ Table user {
   external_auth_id varchar [unique]
   username varchar [not null, unique]
   avatar_url varchar
+  avatar_mode varchar [not null, default: 'animal']
   animal_asset_name varchar
   avatar_color integer
   bio_line_1 varchar

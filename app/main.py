@@ -2,6 +2,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 from app.logging import configure_logging
 from app.users.exceptions import (
+    InvalidAvatarModeException,
     InvalidAvatarUrlException,
     UserNotFoundException,
     UsernameAlreadyTakenException,
@@ -30,6 +31,15 @@ def handle_invalid_avatar_url(
     request: Request, exc: InvalidAvatarUrlException
 ) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": "Invalid avatar URL"})
+
+
+@app.exception_handler(InvalidAvatarModeException)
+def handle_invalid_avatar_mode(
+    request: Request, exc: InvalidAvatarModeException
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=400, content={"detail": "avatar_mode 'photo' requires an avatar_url"}
+    )
 
 
 @app.get("/health")

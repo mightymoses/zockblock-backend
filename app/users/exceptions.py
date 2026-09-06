@@ -8,3 +8,7 @@ class UsernameAlreadyTakenException(Exception):
 
 class InvalidAvatarUrlException(Exception):
     """Raised when an avatar_url is set that wasn't produced by our own upload flow."""
+
+
+class InvalidAvatarModeException(Exception):
+    """Raised when avatar_mode is set to "photo" without an avatar_url."""

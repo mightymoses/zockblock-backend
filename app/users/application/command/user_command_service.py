@@ -1,11 +1,16 @@
 import uuid
+from typing import Literal
 import structlog
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 from app.common import storage
 from app.config import get_settings
 from app.users import repository
-from app.users.exceptions import InvalidAvatarUrlException, UsernameAlreadyTakenException
+from app.users.exceptions import (
+    InvalidAvatarModeException,
+    InvalidAvatarUrlException,
+    UsernameAlreadyTakenException,
+)
 from app.users.models import User
 
 logger = structlog.get_logger()
@@ -27,6 +32,7 @@ def create_user(
     bio_line_1: str | None = None,
     bio_line_2: str | None = None,
     avatar_url: str | None = None,
+    avatar_mode: Literal["animal", "photo"] = "animal",
 ) -> User:
     _validate_avatar_url(avatar_url)
 
@@ -41,7 +47,10 @@ def create_user(
         bio_line_1=bio_line_1,
         bio_line_2=bio_line_2,
         avatar_url=avatar_url,
+        avatar_mode=avatar_mode,
     )
+    _validate_avatar_mode(user)
+
     repository.add(session, user)
     _commit_or_raise_if_username_taken(session)
     session.refresh(user)
@@ -65,6 +74,8 @@ def update_user(session: Session, user: User, changes: dict[str, str | int | Non
 
     for field, value in changes.items():
         setattr(user, field, value)
+
+    _validate_avatar_mode(user)
 
     repository.add(session, user)
     _commit_or_raise_if_username_taken(session)
@@ -91,6 +102,11 @@ def _validate_avatar_url(avatar_url: str | None) -> None:
     r2_public_base_url = get_settings().r2_public_base_url
     if not r2_public_base_url or not avatar_url.startswith(r2_public_base_url):
         raise InvalidAvatarUrlException()
+
+
+def _validate_avatar_mode(user: User) -> None:
+    if user.avatar_mode == "photo" and user.avatar_url is None:
+        raise InvalidAvatarModeException()
 
 
 def _commit_or_raise_if_username_taken(session: Session) -> None:
