@@ -28,8 +28,7 @@ def test_create_user_with_full_profile_fields(client: TestClient):
             "username": "alice",
             "animalAssetName": "fox",
             "avatarColor": 3,
-            "bioLine1": "Hello there",
-            "bioLine2": "General Kenobi",
+            "bio": "Hello there. General Kenobi!",
             "avatarUrl": "https://pub-test.example.r2.dev/avatars/x/1.jpg",
         },
     )
@@ -38,8 +37,7 @@ def test_create_user_with_full_profile_fields(client: TestClient):
     body = response.json()
     assert body["animalAssetName"] == "fox"
     assert body["avatarColor"] == 3
-    assert body["bioLine1"] == "Hello there"
-    assert body["bioLine2"] == "General Kenobi"
+    assert body["bio"] == "Hello there. General Kenobi!"
     assert body["avatarUrl"] == "https://pub-test.example.r2.dev/avatars/x/1.jpg"
 
 
@@ -110,6 +108,12 @@ def test_create_user_fails_with_invalid_username_format(client: TestClient):
     assert response.status_code == 422
 
 
+def test_create_user_fails_with_too_long_bio(client: TestClient):
+    response = client.post("/api/users/", json={"username": "alice", "bio": "x" * 151})
+
+    assert response.status_code == 422
+
+
 def test_create_user_fails_with_invalid_avatar_url(client: TestClient):
     response = client.post(
         "/api/users/", json={"username": "alice", "avatarUrl": "https://evil.example/x.jpg"}
@@ -119,13 +123,13 @@ def test_create_user_fails_with_invalid_avatar_url(client: TestClient):
 
 
 def test_update_user_partial_update(client: TestClient):
-    client.post("/api/users/", json={"username": "alice", "bioLine1": "old"})
+    client.post("/api/users/", json={"username": "alice", "bio": "old"})
 
-    response = client.patch("/api/users/current", json={"bioLine1": "new"})
+    response = client.patch("/api/users/current", json={"bio": "new"})
 
     assert response.status_code == 200
     body = response.json()
-    assert body["bioLine1"] == "new"
+    assert body["bio"] == "new"
     assert body["username"] == "alice"
 
 

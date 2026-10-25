@@ -29,8 +29,7 @@ def create_user(
     external_auth_id: str,
     animal_asset_name: str | None = None,
     avatar_color: int | None = None,
-    bio_line_1: str | None = None,
-    bio_line_2: str | None = None,
+    bio: str | None = None,
     avatar_url: str | None = None,
     avatar_mode: Literal["animal", "photo"] = "animal",
 ) -> User:
@@ -44,8 +43,7 @@ def create_user(
         external_auth_id=external_auth_id,
         animal_asset_name=animal_asset_name,
         avatar_color=avatar_color,
-        bio_line_1=bio_line_1,
-        bio_line_2=bio_line_2,
+        bio=bio,
         avatar_url=avatar_url,
         avatar_mode=avatar_mode,
     )

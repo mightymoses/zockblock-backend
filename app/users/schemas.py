@@ -22,8 +22,7 @@ class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=20, pattern=USERNAME_PATTERN)
     animal_asset_name: str | None = None
     avatar_color: int | None = None
-    bio_line_1: str | None = Field(default=None, max_length=100)
-    bio_line_2: str | None = Field(default=None, max_length=100)
+    bio: str | None = Field(default=None, max_length=150)
     avatar_url: str | None = None
     avatar_mode: AVATAR_MODES = "animal"
 
@@ -34,8 +33,7 @@ class UserUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=3, max_length=20, pattern=USERNAME_PATTERN)
     animal_asset_name: str | None = None
     avatar_color: int | None = None
-    bio_line_1: str | None = Field(default=None, max_length=100)
-    bio_line_2: str | None = Field(default=None, max_length=100)
+    bio: str | None = Field(default=None, max_length=150)
     avatar_url: str | None = None
     avatar_mode: AVATAR_MODES | None = None
 
@@ -47,8 +45,7 @@ class UserResponse(BaseModel):
     username: str
     animal_asset_name: str | None
     avatar_color: int | None
-    bio_line_1: str | None
-    bio_line_2: str | None
+    bio: str | None
     avatar_url: str | None
     avatar_mode: AVATAR_MODES
     created_at: datetime

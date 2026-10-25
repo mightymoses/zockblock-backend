@@ -117,3 +117,14 @@ Ableitung aus "ist `avatar_url` gesetzt". Braucht ein eigenes Feld.
 - [x] Tests: Create mit `photo` ohne `avatarUrl` → 400; Create mit `photo` + `avatarUrl` → 200;
   PATCH auf `photo` ohne vorhandene `avatarUrl` → 400; Wechsel zu `animal` behält `avatarUrl`;
   Default `animal` bei Create ohne explizites Feld
+
+## Nachtrag: Bio als ein Feld statt zwei Zeilen
+- Entscheidung: `bio_line_1`/`bio_line_2` (je 100) zu einem Feld `bio` (max. 150 Zeichen,
+  Instagram-Maß) zusammengelegt – in der API entsprechend `bio` statt `bioLine1`/`bioLine2`
+- Neue Migration statt Anpassung von `50d09a03c459`, da diese bereits auf `main` liegt/deployed ist
+- [x] `models.py`, `schemas.py` (Create/Update/Response), `user_command_service.py` auf `bio` umgestellt
+- [x] Migration `merge bio lines into bio`: bestehende Daten per
+  `LEFT(CONCAT_WS(' ', bio_line_1, bio_line_2), 150)` übernommen; `downgrade()` schreibt `bio`
+  (auf 100 gekürzt) zurück nach `bio_line_1`
+- [x] Tests angepasst + neuer Test: zu lange Bio (151 Zeichen) → 422
+- [x] `docs/db/schema.dbml` nachgezogen

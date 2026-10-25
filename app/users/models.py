@@ -16,8 +16,7 @@ class User(SQLModel, table=True):
     avatar_mode: str = Field(default="animal")
     animal_asset_name: str | None = Field(default=None, max_length=100)
     avatar_color: int | None = Field(default=None)
-    bio_line_1: str | None = Field(default=None, max_length=100)
-    bio_line_2: str | None = Field(default=None, max_length=100)
+    bio: str | None = Field(default=None, max_length=150)
     owner_user_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", index=True)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
