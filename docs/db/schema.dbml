@@ -9,8 +9,7 @@ Table user {
   avatar_mode varchar [not null, default: 'animal']
   animal_asset_name varchar
   avatar_color integer
-  bio_line_1 varchar
-  bio_line_2 varchar
+  bio varchar
   owner_user_id uuid [ref: > user.id]
   created_at timestamp [not null]
   updated_at timestamp [not null]
