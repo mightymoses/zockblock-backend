@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, create_engine
 from testcontainers.community.postgres import PostgresContainer
 
+from app.common import storage
 from app.config import get_settings
 from app.dependencies import get_session, require_auth
 from app.main import app
@@ -18,8 +19,7 @@ from app.main import app
 # context manager (see `engine` below) get cleaned up regardless.
 os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
 
-# lets tests set a valid avatar_url without needing a real R2 bucket -
-# _validate_avatar_url only checks the prefix, never actually reaches R2
+# lets tests build valid avatar URLs - actual R2 calls are faked, see `fake_storage` below
 os.environ.setdefault("R2_PUBLIC_BASE_URL", "https://pub-test.example.r2.dev")
 
 
@@ -71,3 +71,31 @@ def client(session: Session) -> Generator[TestClient, None, None]:
     yield TestClient(app)
 
     app.dependency_overrides.clear()
+
+
+class FakeStorage:
+    """In-memory stand-in for the bucket: knows which keys "exist" and records
+    every deletion, so tests can assert on what was copied/cleaned up."""
+
+    def __init__(self) -> None:
+        self.objects: set[str] = set()
+        self.deleted: list[str] = []
+
+    def copy_object(self, source_key: str, target_key: str) -> None:
+        if source_key not in self.objects:
+            raise storage.StorageObjectNotFoundError(source_key)
+        self.objects.add(target_key)
+
+    def delete_object(self, key: str) -> None:
+        self.objects.discard(key)
+        self.deleted.append(key)
+
+
+@pytest.fixture(autouse=True)
+def fake_storage(monkeypatch: pytest.MonkeyPatch) -> FakeStorage:
+    """Autouse, so no test can ever reach a real R2 bucket by accident.
+    Tests that care simply request it by name to get the same instance."""
+    fake = FakeStorage()
+    monkeypatch.setattr(storage, "copy_object", fake.copy_object)
+    monkeypatch.setattr(storage, "delete_object", fake.delete_object)
+    return fake

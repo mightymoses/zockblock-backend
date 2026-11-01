@@ -4,7 +4,6 @@ import structlog
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 from app.common import storage
-from app.config import get_settings
 from app.users import repository
 from app.users.exceptions import (
     InvalidAvatarModeException,
@@ -33,7 +32,9 @@ def create_user(
     avatar_url: str | None = None,
     avatar_mode: Literal["animal", "photo"] = "animal",
 ) -> User:
-    _validate_avatar_url(avatar_url)
+    pending_avatar_key = (
+        _pending_avatar_key(avatar_url, external_auth_id) if avatar_url is not None else None
+    )
 
     if repository.exists_by_username(session, username):
         raise UsernameAlreadyTakenException()
@@ -49,8 +50,9 @@ def create_user(
     )
     _validate_avatar_mode(user)
 
-    repository.add(session, user)
-    _commit_or_raise_if_username_taken(session)
+    promoted_avatar_key = _promote_avatar(user, pending_avatar_key) if pending_avatar_key else None
+
+    _save_and_clean_up_avatars(session, user, promoted_avatar_key, replaced_avatar_url=None)
     session.refresh(user)
 
     logger.info("user created", user_id=str(user.id))
@@ -59,8 +61,19 @@ def create_user(
 
 
 def update_user(session: Session, user: User, changes: dict[str, str | int | None]) -> User:
+    changes = dict(changes)  # don't mutate the caller's dict
+
+    if "avatar_url" in changes and changes["avatar_url"] == user.avatar_url:
+        # client just sent the unchanged URL back along with other fields - nothing to do
+        del changes["avatar_url"]
+
+    replaced_avatar_url: str | None = None
+    pending_avatar_key: str | None = None
     if "avatar_url" in changes:
-        _validate_avatar_url(changes["avatar_url"])  # pyright: ignore[reportArgumentType]
+        replaced_avatar_url = user.avatar_url
+        new_avatar_url = changes["avatar_url"]
+        if new_avatar_url is not None:
+            pending_avatar_key = _pending_avatar_key(str(new_avatar_url), user.external_auth_id)
 
     new_username = changes.get("username")
     if (
@@ -75,8 +88,9 @@ def update_user(session: Session, user: User, changes: dict[str, str | int | Non
 
     _validate_avatar_mode(user)
 
-    repository.add(session, user)
-    _commit_or_raise_if_username_taken(session)
+    promoted_avatar_key = _promote_avatar(user, pending_avatar_key) if pending_avatar_key else None
+
+    _save_and_clean_up_avatars(session, user, promoted_avatar_key, replaced_avatar_url)
     session.refresh(user)
 
     logger.info("user updated", user_id=str(user.id))
@@ -87,19 +101,41 @@ def update_user(session: Session, user: User, changes: dict[str, str | int | Non
 def request_avatar_upload_url(external_auth_id: str, content_type: str) -> tuple[str, str]:
     """Returns (upload_url, avatar_url). Doesn't touch the database - the client
     still needs to send the resulting avatar_url via create_user/update_user for
-    it to actually be saved on the profile."""
+    it to actually be saved on the profile. Until then the upload stays under the
+    pending prefix, which R2 cleans up on its own."""
     extension = CONTENT_TYPE_EXTENSIONS[content_type]
-    key = f"avatars/{external_auth_id}/{uuid.uuid4()}.{extension}"
+    key = f"{storage.PENDING_PREFIX}avatars/{external_auth_id}/{uuid.uuid4()}.{extension}"
     return storage.generate_presigned_upload_url(key, content_type)
 
 
-def _validate_avatar_url(avatar_url: str | None) -> None:
-    if avatar_url is None:
-        return
-
-    r2_public_base_url = get_settings().r2_public_base_url
-    if not r2_public_base_url or not avatar_url.startswith(r2_public_base_url):
+def _pending_avatar_key(avatar_url: str, external_auth_id: str | None) -> str:
+    """Only accepts a URL from our own upload flow, uploaded by this very user -
+    returns its pending storage key."""
+    key = storage.key_from_public_url(avatar_url)
+    owner_prefix = f"{storage.PENDING_PREFIX}avatars/{external_auth_id}/"
+    if (
+        key is None
+        or external_auth_id is None
+        or not key.startswith(owner_prefix)
+        # exactly one file name below the user's folder, nothing nested
+        or "/" in key.removeprefix(owner_prefix)
+    ):
         raise InvalidAvatarUrlException()
+    return key
+
+
+def _promote_avatar(user: User, pending_key: str) -> str:
+    """Copies the pending upload to its permanent location and points the user at it.
+    Copy instead of move, so the pending original survives if the commit fails
+    and the client can simply retry. Returns the permanent key."""
+    permanent_key = pending_key.removeprefix(storage.PENDING_PREFIX)
+    try:
+        storage.copy_object(pending_key, permanent_key)
+    except storage.StorageObjectNotFoundError as exc:
+        # URL looks fine, but nothing was ever uploaded (or it already expired)
+        raise InvalidAvatarUrlException() from exc
+    user.avatar_url = storage.public_url_for_key(permanent_key)
+    return permanent_key
 
 
 def _validate_avatar_mode(user: User) -> None:
@@ -107,8 +143,39 @@ def _validate_avatar_mode(user: User) -> None:
         raise InvalidAvatarModeException()
 
 
-def _commit_or_raise_if_username_taken(session: Session) -> None:
+def _save_and_clean_up_avatars(
+    session: Session, user: User, promoted_avatar_key: str | None, replaced_avatar_url: str | None
+) -> None:
+    """Saves the user, then deletes whichever avatar objects are no longer referenced:
+    on success the pending original and the replaced avatar, on failure the
+    permanent copy we just made."""
     try:
+        _save_or_raise_if_username_taken(session, user)
+    except Exception:
+        if promoted_avatar_key:
+            _delete_avatar_quietly(promoted_avatar_key)
+        raise
+
+    if promoted_avatar_key:
+        _delete_avatar_quietly(storage.PENDING_PREFIX + promoted_avatar_key)
+    if replaced_avatar_url:
+        replaced_key = storage.key_from_public_url(replaced_avatar_url)
+        if replaced_key:
+            _delete_avatar_quietly(replaced_key)
+
+
+def _delete_avatar_quietly(key: str) -> None:
+    """A leftover object is only a storage leak, not worth failing the request for."""
+    try:
+        storage.delete_object(key)
+    except Exception:
+        logger.warning("avatar cleanup failed", key=key, exc_info=True)
+
+
+def _save_or_raise_if_username_taken(session: Session, user: User) -> None:
+    # repository.add() already flushes, so a unique violation can surface there - not only on commit
+    try:
+        repository.add(session, user)
         session.commit()
     except IntegrityError as exc:
         session.rollback()
