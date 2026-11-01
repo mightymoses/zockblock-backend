@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     # version (YYYY-MM-DD) of the terms of use users currently have to accept -
     # bumping it makes every user re-accept on their next app start
     current_terms_version: str = ""
+    # public URL of exactly that version's text, shown by the app when asking for consent
+    current_terms_url: str = ""
 
     @computed_field
     @property

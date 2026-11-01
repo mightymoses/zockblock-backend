@@ -24,8 +24,10 @@ Beides muss beim Anlegen des Profils mitgeschickt werden.
 - **Zeitpunkte setzt das Backend** (`accepted_at`, `crash_reports_consent_updated_at`), die App
   schickt nie einen Zeitstempel mit.
 - **`UserResponse.hasAcceptedCurrentTerms`:** berechnet aus "neueste akzeptierte Version ==
-  `current_terms_version`". Die App zeigt den Zustimmungsdialog, wenn `false` – muss die aktuelle
-  Version also nicht selbst kennen (kein App-Update bei einem Bump nötig).
+  `current_terms_version`". Die App zeigt den Zustimmungsdialog, wenn `false` – für die Frage
+  *ob* zugestimmt werden muss, braucht sie die aktuelle Version also nicht. **Korrektur:** Zum
+  *Zustimmen* muss sie genau diese Version mitschicken; die holt sie sich über
+  `GET /api/terms/current` (siehe `current-terms-endpoint.md`), nie aus einer Konstante in der App.
 - **API-Felder:**
   | Feld | `UserCreate` | `UserUpdate` | `UserResponse` |
   | --- | --- | --- | --- |

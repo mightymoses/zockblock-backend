@@ -4,7 +4,7 @@ import structlog
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 from app.common import storage
-from app.config import get_settings
+from app.terms.application.query import terms_query_service
 from app.users import repository
 from app.users.exceptions import (
     InvalidAvatarModeException,
@@ -162,7 +162,7 @@ def _promote_avatar(user: User, pending_key: str) -> str:
 
 
 def _validate_terms_version(terms_version: str) -> None:
-    if terms_version != get_settings().current_terms_version:
+    if terms_version != terms_query_service.get_current_terms().version:
         raise OutdatedTermsVersionException()
 
 

@@ -25,6 +25,11 @@ os.environ.setdefault("R2_PUBLIC_BASE_URL", "https://pub-test.example.r2.dev")
 # assigned (not setdefault), so a different value in a local .env can't break the tests
 CURRENT_TERMS_VERSION = "2026-11-01"
 os.environ["CURRENT_TERMS_VERSION"] = CURRENT_TERMS_VERSION
+CURRENT_TERMS_URL = f"https://legal.example/terms/{CURRENT_TERMS_VERSION}"
+os.environ["CURRENT_TERMS_URL"] = CURRENT_TERMS_URL
+# importing app.main above may already have cached the settings (read from .env) -
+# drop them, so tests that don't start the DB (see `engine`) see the values set here too
+get_settings.cache_clear()
 
 
 @pytest.fixture(scope="session")

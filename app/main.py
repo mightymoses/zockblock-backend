@@ -1,6 +1,8 @@
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 from app.logging import configure_logging
+from app.terms.exceptions import TermsNotConfiguredException
+from app.terms.router import router as terms_router
 from app.users.exceptions import (
     InvalidAvatarModeException,
     InvalidAvatarUrlException,
@@ -52,6 +54,13 @@ def handle_outdated_terms_version(
     )
 
 
+@app.exception_handler(TermsNotConfiguredException)
+def handle_terms_not_configured(
+    request: Request, exc: TermsNotConfiguredException
+) -> JSONResponse:
+    return JSONResponse(status_code=500, content={"detail": "Terms of use are not configured"})
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -59,4 +68,5 @@ def health() -> dict[str, str]:
 
 api_router = APIRouter()
 api_router.include_router(users_router)
+api_router.include_router(terms_router)
 app.include_router(api_router, prefix="/api")
