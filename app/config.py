@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     r2_public_base_url: str = ""
     presigned_url_expiry_seconds: int = 300
 
+    # version (YYYY-MM-DD) of the terms of use users currently have to accept -
+    # bumping it makes every user re-accept on their next app start
+    current_terms_version: str = ""
+
     @computed_field
     @property
     def postgres_url(self) -> str:
