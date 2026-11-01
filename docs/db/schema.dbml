@@ -10,10 +10,23 @@ Table user {
   animal_asset_name varchar
   avatar_color integer
   bio varchar
+  crash_reports_consent boolean
+  crash_reports_consent_updated_at timestamp
   owner_user_id uuid [ref: > user.id]
   created_at timestamp [not null]
   updated_at timestamp [not null]
   deleted_at timestamp
+}
+
+Table terms_acceptance {
+  id uuid [pk]
+  user_id uuid [not null, ref: > user.id]
+  terms_version varchar [not null]
+  accepted_at timestamp [not null]
+
+  indexes {
+    (user_id, terms_version) [unique]
+  }
 }
 
 Table session_participants {

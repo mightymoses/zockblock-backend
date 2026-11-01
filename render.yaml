@@ -33,3 +33,5 @@ services:
         sync: false
       - key: R2_PUBLIC_BASE_URL
         sync: false
+      - key: CURRENT_TERMS_VERSION
+        value: "2026-11-01"

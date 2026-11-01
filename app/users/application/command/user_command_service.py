@@ -4,13 +4,15 @@ import structlog
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 from app.common import storage
+from app.config import get_settings
 from app.users import repository
 from app.users.exceptions import (
     InvalidAvatarModeException,
     InvalidAvatarUrlException,
+    OutdatedTermsVersionException,
     UsernameAlreadyTakenException,
 )
-from app.users.models import User
+from app.users.models import TermsAcceptance, User, get_datetime_utc
 
 logger = structlog.get_logger()
 
@@ -26,12 +28,15 @@ def create_user(
     session: Session,
     username: str,
     external_auth_id: str,
+    crash_reports_consent: bool,
+    accepted_terms_version: str,
     animal_asset_name: str | None = None,
     avatar_color: int | None = None,
     bio: str | None = None,
     avatar_url: str | None = None,
     avatar_mode: Literal["animal", "photo"] = "animal",
 ) -> User:
+    _validate_terms_version(accepted_terms_version)
     pending_avatar_key = (
         _pending_avatar_key(avatar_url, external_auth_id) if avatar_url is not None else None
     )
@@ -47,7 +52,10 @@ def create_user(
         bio=bio,
         avatar_url=avatar_url,
         avatar_mode=avatar_mode,
+        crash_reports_consent=crash_reports_consent,
+        crash_reports_consent_updated_at=get_datetime_utc(),
     )
+    user.terms_acceptances.append(TermsAcceptance(user_id=user.id, terms_version=accepted_terms_version))
     _validate_avatar_mode(user)
 
     promoted_avatar_key = _promote_avatar(user, pending_avatar_key) if pending_avatar_key else None
@@ -62,6 +70,16 @@ def create_user(
 
 def update_user(session: Session, user: User, changes: dict[str, str | int | None]) -> User:
     changes = dict(changes)  # don't mutate the caller's dict
+
+    # not a column on the user, but a new row in its acceptance history
+    accepted_terms_version = changes.pop("accepted_terms_version", None)
+    if accepted_terms_version is not None:
+        _validate_terms_version(str(accepted_terms_version))
+
+    crash_reports_consent_changed = (
+        "crash_reports_consent" in changes
+        and changes["crash_reports_consent"] != user.crash_reports_consent
+    )
 
     if "avatar_url" in changes and changes["avatar_url"] == user.avatar_url:
         # client just sent the unchanged URL back along with other fields - nothing to do
@@ -85,6 +103,11 @@ def update_user(session: Session, user: User, changes: dict[str, str | int | Non
 
     for field, value in changes.items():
         setattr(user, field, value)
+
+    if crash_reports_consent_changed:
+        user.crash_reports_consent_updated_at = get_datetime_utc()
+    if accepted_terms_version is not None and not user.has_accepted_terms(str(accepted_terms_version)):
+        user.terms_acceptances.append(TermsAcceptance(user_id=user.id, terms_version=str(accepted_terms_version)))
 
     _validate_avatar_mode(user)
 
@@ -136,6 +159,11 @@ def _promote_avatar(user: User, pending_key: str) -> str:
         raise InvalidAvatarUrlException() from exc
     user.avatar_url = storage.public_url_for_key(permanent_key)
     return permanent_key
+
+
+def _validate_terms_version(terms_version: str) -> None:
+    if terms_version != get_settings().current_terms_version:
+        raise OutdatedTermsVersionException()
 
 
 def _validate_avatar_mode(user: User) -> None:

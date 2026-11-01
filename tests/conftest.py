@@ -22,6 +22,10 @@ os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
 # lets tests build valid avatar URLs - actual R2 calls are faked, see `fake_storage` below
 os.environ.setdefault("R2_PUBLIC_BASE_URL", "https://pub-test.example.r2.dev")
 
+# assigned (not setdefault), so a different value in a local .env can't break the tests
+CURRENT_TERMS_VERSION = "2026-11-01"
+os.environ["CURRENT_TERMS_VERSION"] = CURRENT_TERMS_VERSION
+
 
 @pytest.fixture(scope="session")
 def engine() -> Generator[Engine, None, None]:

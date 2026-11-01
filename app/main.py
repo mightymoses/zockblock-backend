@@ -4,6 +4,7 @@ from app.logging import configure_logging
 from app.users.exceptions import (
     InvalidAvatarModeException,
     InvalidAvatarUrlException,
+    OutdatedTermsVersionException,
     UserNotFoundException,
     UsernameAlreadyTakenException,
 )
@@ -39,6 +40,15 @@ def handle_invalid_avatar_mode(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=400, content={"detail": "avatar_mode 'photo' requires an avatar_url"}
+    )
+
+
+@app.exception_handler(OutdatedTermsVersionException)
+def handle_outdated_terms_version(
+    request: Request, exc: OutdatedTermsVersionException
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=400, content={"detail": "Only the current terms version can be accepted"}
     )
 
 

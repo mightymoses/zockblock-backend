@@ -12,3 +12,7 @@ class InvalidAvatarUrlException(Exception):
 
 class InvalidAvatarModeException(Exception):
     """Raised when avatar_mode is set to "photo" without an avatar_url."""
+
+
+class OutdatedTermsVersionException(Exception):
+    """Raised when a user tries to accept a terms version other than the current one."""
