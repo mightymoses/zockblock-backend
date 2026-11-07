@@ -31,8 +31,13 @@ typeCheckingMode = "standard"
 
 [tool.importlinter]
 root_package = "app"
-# no contracts yet — sinnvoll wird ein "independence"-Contract erst, sobald
-# es ein zweites Feature neben app.users gibt (siehe docs/task-checklists)
+
+# users may use terms (via its query service), never the other way round
+[[tool.importlinter.contracts]]
+name = "terms does not depend on users"
+type = "forbidden"
+source_modules = ["app.terms"]
+forbidden_modules = ["app.users"]
 
 [dependency-groups]
 dev = [

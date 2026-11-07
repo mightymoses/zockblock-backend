@@ -349,6 +349,17 @@ def test_create_user_rejects_outdated_terms_version(client: TestClient):
     assert response.status_code == 400
 
 
+def test_create_user_fails_when_terms_are_not_configured(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(get_settings(), "current_terms_version", "")
+
+    response = client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+
+    # a server misconfiguration, not the client's fault - so no 400
+    assert response.status_code == 500
+
+
 def test_create_user_stores_consents(client: TestClient):
     response = client.post(
         "/api/users/", json={**CONSENTS, "username": "alice", "crashReportsConsent": True}

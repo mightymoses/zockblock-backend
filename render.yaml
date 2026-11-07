@@ -35,3 +35,5 @@ services:
         sync: false
       - key: CURRENT_TERMS_VERSION
         value: "2026-11-01"
+      - key: CURRENT_TERMS_URL
+        value: https://legal.zockblock.app/terms/2026-11-01
