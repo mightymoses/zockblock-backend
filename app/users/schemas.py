@@ -15,6 +15,9 @@ ALLOWED_AVATAR_CONTENT_TYPES = Literal["image/jpeg", "image/png", "image/webp"]
 
 AVATAR_MODES = Literal["animal", "photo"]
 
+# avatar colors are ARGB values as sent by the app (e.g. 0xFF52A788) - 32 bit, unsigned
+MAX_ARGB_COLOR = 0xFFFFFFFF
+
 # terms versions are dates, e.g. "2026-11-01"
 TERMS_VERSION_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 
@@ -23,8 +26,8 @@ class UserCreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     username: str = Field(min_length=3, max_length=20, pattern=USERNAME_PATTERN)
-    animal_asset_name: str | None = None
-    avatar_color: int | None = None
+    animal_asset_name: str = Field(min_length=1, max_length=100)
+    avatar_color: int = Field(ge=0, le=MAX_ARGB_COLOR)
     bio: str | None = Field(default=None, max_length=150)
     avatar_url: str | None = None
     avatar_mode: AVATAR_MODES = "animal"
@@ -36,17 +39,17 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     username: str | None = Field(default=None, min_length=3, max_length=20, pattern=USERNAME_PATTERN)
-    animal_asset_name: str | None = None
-    avatar_color: int | None = None
+    animal_asset_name: str | None = Field(default=None, min_length=1, max_length=100)
+    avatar_color: int | None = Field(default=None, ge=0, le=MAX_ARGB_COLOR)
     bio: str | None = Field(default=None, max_length=150)
     avatar_url: str | None = None
     avatar_mode: AVATAR_MODES | None = None
     crash_reports_consent: bool | None = None
     accepted_terms_version: str | None = Field(default=None, pattern=TERMS_VERSION_PATTERN)
 
-    @field_validator("crash_reports_consent", "accepted_terms_version")
+    @field_validator("animal_asset_name", "avatar_color", "crash_reports_consent", "accepted_terms_version")
     @classmethod
-    def reject_explicit_null(cls, value: bool | str | None) -> bool | str | None:
+    def reject_explicit_null(cls, value: bool | int | str | None) -> bool | int | str | None:
         # only runs for fields actually sent - omitting them is fine, resetting them to null isn't
         if value is None:
             raise ValueError("may be omitted, but not set to null")

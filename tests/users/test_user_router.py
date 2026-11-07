@@ -9,8 +9,15 @@ from app.users.models import TermsAcceptance
 from tests.conftest import CURRENT_TERMS_VERSION, FakeStorage
 
 BASE_URL = "https://pub-test.example.r2.dev"
-# required on every profile creation - spread into the request bodies / service calls
-CONSENTS = {"crashReportsConsent": False, "acceptedTermsVersion": CURRENT_TERMS_VERSION}
+# a real ARGB value as sent by the app - well above the signed 32 bit INTEGER range
+ARGB_COLOR = 0xFF52A788
+# required on every profile creation - spread into the request bodies
+REQUIRED_FIELDS = {
+    "animalAssetName": "fox",
+    "avatarColor": ARGB_COLOR,
+    "crashReportsConsent": False,
+    "acceptedTermsVersion": CURRENT_TERMS_VERSION,
+}
 PERMANENT_AVATAR_URL = f"{BASE_URL}/avatars/auth0|test-user/1.jpg"
 
 
@@ -19,6 +26,8 @@ def _create_other_user(session: Session, username: str) -> None:
         session,
         username=username,
         external_auth_id="auth0|someone-else",
+        animal_asset_name="fox",
+        avatar_color=ARGB_COLOR,
         crash_reports_consent=False,
         accepted_terms_version=CURRENT_TERMS_VERSION,
     )
@@ -32,7 +41,7 @@ def _upload_avatar(fake_storage: FakeStorage, file_name: str = "1.jpg") -> str:
 
 
 def test_create_and_get_current_user(client: TestClient):
-    create_response = client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    create_response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
     assert create_response.status_code == 200
     assert create_response.json()["username"] == "alice"
 
@@ -51,10 +60,10 @@ def test_create_user_with_full_profile_fields(client: TestClient, fake_storage: 
     response = client.post(
         "/api/users/",
         json={
-            **CONSENTS,
+            **REQUIRED_FIELDS,
             "username": "alice",
-            "animalAssetName": "fox",
-            "avatarColor": 3,
+            "animalAssetName": "owl",
+            "avatarColor": ARGB_COLOR,
             "bio": "Hello there. General Kenobi!",
             "avatarUrl": _upload_avatar(fake_storage),
         },
@@ -62,14 +71,14 @@ def test_create_user_with_full_profile_fields(client: TestClient, fake_storage: 
 
     assert response.status_code == 200
     body = response.json()
-    assert body["animalAssetName"] == "fox"
-    assert body["avatarColor"] == 3
+    assert body["animalAssetName"] == "owl"
+    assert body["avatarColor"] == ARGB_COLOR
     assert body["bio"] == "Hello there. General Kenobi!"
     assert body["avatarUrl"] == PERMANENT_AVATAR_URL
 
 
 def test_create_user_defaults_to_animal_mode(client: TestClient):
-    response = client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
 
     assert response.status_code == 200
     assert response.json()["avatarMode"] == "animal"
@@ -81,7 +90,7 @@ def test_create_user_with_photo_mode_and_avatar_url_succeeds(
     response = client.post(
         "/api/users/",
         json={
-            **CONSENTS,
+            **REQUIRED_FIELDS,
             "username": "alice",
             "avatarMode": "photo",
             "avatarUrl": _upload_avatar(fake_storage),
@@ -93,13 +102,13 @@ def test_create_user_with_photo_mode_and_avatar_url_succeeds(
 
 
 def test_create_user_fails_with_photo_mode_and_no_avatar_url(client: TestClient):
-    response = client.post("/api/users/", json={**CONSENTS, "username": "alice", "avatarMode": "photo"})
+    response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "avatarMode": "photo"})
 
     assert response.status_code == 400
 
 
 def test_update_user_fails_switching_to_photo_mode_without_avatar_url(client: TestClient):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
 
     response = client.patch("/api/users/current", json={"avatarMode": "photo"})
 
@@ -112,7 +121,7 @@ def test_update_user_switching_to_animal_mode_keeps_avatar_url(
     client.post(
         "/api/users/",
         json={
-            **CONSENTS,
+            **REQUIRED_FIELDS,
             "username": "alice",
             "avatarMode": "photo",
             "avatarUrl": _upload_avatar(fake_storage),
@@ -130,19 +139,36 @@ def test_update_user_switching_to_animal_mode_keeps_avatar_url(
 def test_create_user_fails_with_duplicate_username(client: TestClient, session: Session):
     _create_other_user(session, username="taken")
 
-    response = client.post("/api/users/", json={**CONSENTS, "username": "taken"})
+    response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "taken"})
 
     assert response.status_code == 409
 
 
 def test_create_user_fails_with_invalid_username_format(client: TestClient):
-    response = client.post("/api/users/", json={**CONSENTS, "username": "a..b"})
+    response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "a..b"})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("avatar_color", [-1, 0xFFFFFFFF + 1])
+def test_create_user_rejects_avatar_color_outside_argb_range(client: TestClient, avatar_color: int):
+    response = client.post(
+        "/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "avatarColor": avatar_color}
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_user_rejects_empty_animal_asset_name(client: TestClient):
+    response = client.post(
+        "/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "animalAssetName": ""}
+    )
 
     assert response.status_code == 422
 
 
 def test_create_user_fails_with_too_long_bio(client: TestClient):
-    response = client.post("/api/users/", json={**CONSENTS, "username": "alice", "bio": "x" * 151})
+    response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "bio": "x" * 151})
 
     assert response.status_code == 422
 
@@ -165,7 +191,7 @@ def test_create_user_fails_with_invalid_avatar_url(
     # the object exists, so only the ownership/location check can reject it
     fake_storage.objects.add(avatar_url.removeprefix(f"{BASE_URL}/"))
 
-    response = client.post("/api/users/", json={**CONSENTS, "username": "alice", "avatarUrl": avatar_url})
+    response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "avatarUrl": avatar_url})
 
     assert response.status_code == 400
     assert fake_storage.deleted == []
@@ -174,7 +200,7 @@ def test_create_user_fails_with_invalid_avatar_url(
 def test_create_user_fails_when_pending_avatar_was_never_uploaded(client: TestClient):
     response = client.post(
         "/api/users/",
-        json={**CONSENTS, "username": "alice", "avatarUrl": f"{BASE_URL}/pending/avatars/auth0|test-user/1.jpg"},
+        json={**REQUIRED_FIELDS, "username": "alice", "avatarUrl": f"{BASE_URL}/pending/avatars/auth0|test-user/1.jpg"},
     )
 
     assert response.status_code == 400
@@ -182,7 +208,7 @@ def test_create_user_fails_when_pending_avatar_was_never_uploaded(client: TestCl
 
 def test_create_user_promotes_pending_avatar(client: TestClient, fake_storage: FakeStorage):
     response = client.post(
-        "/api/users/", json={**CONSENTS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)}
+        "/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)}
     )
 
     assert response.status_code == 200
@@ -203,7 +229,7 @@ def test_create_user_removes_promoted_copy_when_commit_fails(
     )
 
     response = client.post(
-        "/api/users/", json={**CONSENTS, "username": "taken", "avatarUrl": _upload_avatar(fake_storage)}
+        "/api/users/", json={**REQUIRED_FIELDS, "username": "taken", "avatarUrl": _upload_avatar(fake_storage)}
     )
 
     assert response.status_code == 409
@@ -212,7 +238,7 @@ def test_create_user_removes_promoted_copy_when_commit_fails(
 
 
 def test_update_user_partial_update(client: TestClient):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice", "bio": "old"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "bio": "old"})
 
     response = client.patch("/api/users/current", json={"bio": "new"})
 
@@ -223,7 +249,7 @@ def test_update_user_partial_update(client: TestClient):
 
 
 def test_update_user_clears_avatar_with_explicit_null(client: TestClient, fake_storage: FakeStorage):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)})
 
     response = client.patch("/api/users/current", json={"avatarUrl": None})
 
@@ -233,7 +259,7 @@ def test_update_user_clears_avatar_with_explicit_null(client: TestClient, fake_s
 
 
 def test_update_user_replaces_avatar_and_deletes_old_one(client: TestClient, fake_storage: FakeStorage):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)})
 
     response = client.patch(
         "/api/users/current", json={"avatarUrl": _upload_avatar(fake_storage, "2.jpg")}
@@ -245,7 +271,7 @@ def test_update_user_replaces_avatar_and_deletes_old_one(client: TestClient, fak
 
 
 def test_update_user_with_unchanged_avatar_url_is_a_no_op(client: TestClient, fake_storage: FakeStorage):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "avatarUrl": _upload_avatar(fake_storage)})
     fake_storage.deleted.clear()
 
     response = client.patch(
@@ -258,7 +284,7 @@ def test_update_user_with_unchanged_avatar_url_is_a_no_op(client: TestClient, fa
 
 
 def test_update_user_rejects_someone_elses_avatar(client: TestClient, fake_storage: FakeStorage):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
     fake_storage.objects.add("avatars/auth0|someone-else/1.jpg")
 
     response = client.patch(
@@ -270,7 +296,7 @@ def test_update_user_rejects_someone_elses_avatar(client: TestClient, fake_stora
 
 def test_update_user_fails_with_duplicate_username(client: TestClient, session: Session):
     _create_other_user(session, username="taken")
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
 
     response = client.patch("/api/users/current", json={"username": "taken"})
 
@@ -306,7 +332,7 @@ def test_username_availability(client: TestClient):
     response = client.get("/api/users/username-availability", params={"username": "alice"})
     assert response.json() == {"isAvailable": True}
 
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
 
     response = client.get("/api/users/username-availability", params={"username": "alice"})
     assert response.json() == {"isAvailable": False}
@@ -323,9 +349,9 @@ def _terms_acceptance_count(session: Session) -> int:
     return len(session.exec(select(TermsAcceptance)).all())
 
 
-@pytest.mark.parametrize("missing_field", ["crashReportsConsent", "acceptedTermsVersion"])
-def test_create_user_requires_consents(client: TestClient, missing_field: str):
-    body = {**CONSENTS, "username": "alice"}
+@pytest.mark.parametrize("missing_field", list(REQUIRED_FIELDS))
+def test_create_user_requires_all_required_fields(client: TestClient, missing_field: str):
+    body = {**REQUIRED_FIELDS, "username": "alice"}
     del body[missing_field]
 
     response = client.post("/api/users/", json=body)
@@ -335,7 +361,7 @@ def test_create_user_requires_consents(client: TestClient, missing_field: str):
 
 def test_create_user_rejects_malformed_terms_version(client: TestClient):
     response = client.post(
-        "/api/users/", json={**CONSENTS, "username": "alice", "acceptedTermsVersion": "01.11.2026"}
+        "/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "acceptedTermsVersion": "01.11.2026"}
     )
 
     assert response.status_code == 422
@@ -343,7 +369,7 @@ def test_create_user_rejects_malformed_terms_version(client: TestClient):
 
 def test_create_user_rejects_outdated_terms_version(client: TestClient):
     response = client.post(
-        "/api/users/", json={**CONSENTS, "username": "alice", "acceptedTermsVersion": "2025-01-01"}
+        "/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "acceptedTermsVersion": "2025-01-01"}
     )
 
     assert response.status_code == 400
@@ -354,7 +380,7 @@ def test_create_user_fails_when_terms_are_not_configured(
 ):
     monkeypatch.setattr(get_settings(), "current_terms_version", "")
 
-    response = client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    response = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
 
     # a server misconfiguration, not the client's fault - so no 400
     assert response.status_code == 500
@@ -362,7 +388,7 @@ def test_create_user_fails_when_terms_are_not_configured(
 
 def test_create_user_stores_consents(client: TestClient):
     response = client.post(
-        "/api/users/", json={**CONSENTS, "username": "alice", "crashReportsConsent": True}
+        "/api/users/", json={**REQUIRED_FIELDS, "username": "alice", "crashReportsConsent": True}
     )
 
     assert response.status_code == 200
@@ -377,7 +403,7 @@ def test_create_user_stores_consents(client: TestClient):
 def test_update_user_accepts_new_terms_version(
     client: TestClient, session: Session, monkeypatch: pytest.MonkeyPatch
 ):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
     _bump_current_terms_version(monkeypatch)
 
     before = client.get("/api/users/current").json()
@@ -393,7 +419,7 @@ def test_update_user_accepts_new_terms_version(
 
 
 def test_update_user_accepting_same_terms_version_again_is_a_no_op(client: TestClient, session: Session):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
 
     response = client.patch("/api/users/current", json={"acceptedTermsVersion": CURRENT_TERMS_VERSION})
 
@@ -402,7 +428,7 @@ def test_update_user_accepting_same_terms_version_again_is_a_no_op(client: TestC
 
 
 def test_update_user_rejects_outdated_terms_version(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
     _bump_current_terms_version(monkeypatch)
 
     response = client.patch("/api/users/current", json={"acceptedTermsVersion": CURRENT_TERMS_VERSION})
@@ -411,7 +437,7 @@ def test_update_user_rejects_outdated_terms_version(client: TestClient, monkeypa
 
 
 def test_update_user_crash_reports_consent_only_touches_timestamp_on_change(client: TestClient):
-    created = client.post("/api/users/", json={**CONSENTS, "username": "alice"}).json()
+    created = client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"}).json()
 
     changed = client.patch("/api/users/current", json={"crashReportsConsent": True}).json()
     unchanged = client.patch("/api/users/current", json={"crashReportsConsent": True}).json()
@@ -423,9 +449,9 @@ def test_update_user_crash_reports_consent_only_touches_timestamp_on_change(clie
     assert unchanged["crashReportsConsentUpdatedAt"] == changed["crashReportsConsentUpdatedAt"]
 
 
-@pytest.mark.parametrize("field", ["crashReportsConsent", "acceptedTermsVersion"])
-def test_update_user_rejects_explicit_null_for_consents(client: TestClient, field: str):
-    client.post("/api/users/", json={**CONSENTS, "username": "alice"})
+@pytest.mark.parametrize("field", list(REQUIRED_FIELDS))
+def test_update_user_rejects_explicit_null_for_required_fields(client: TestClient, field: str):
+    client.post("/api/users/", json={**REQUIRED_FIELDS, "username": "alice"})
 
     response = client.patch("/api/users/current", json={field: None})
 

@@ -9,6 +9,8 @@ def test_created_user_can_be_fetched_again(session: Session):
         session,
         username="alice",
         external_auth_id="auth0|123",
+        animal_asset_name="fox",
+        avatar_color=0xFF52A788,
         crash_reports_consent=False,
         accepted_terms_version=CURRENT_TERMS_VERSION,
     )
