@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy import DateTime, UniqueConstraint
+from sqlalchemy import BigInteger, DateTime, UniqueConstraint
 from app.config import get_settings
 
 
@@ -16,7 +16,11 @@ class User(SQLModel, table=True):
     avatar_url: str | None = Field(default=None)
     avatar_mode: str = Field(default="animal")
     animal_asset_name: str | None = Field(default=None, max_length=100)
-    avatar_color: int | None = Field(default=None)
+    # ARGB value (up to 0xFFFFFFFF) - doesn't fit into a signed 32 bit INTEGER
+    avatar_color: int | None = Field(
+        default=None,
+        sa_type=BigInteger,  # pyright: ignore[reportArgumentType]
+    )
     bio: str | None = Field(default=None, max_length=150)
     # None = never asked (only possible for users created before consents were introduced)
     crash_reports_consent: bool | None = Field(default=None)

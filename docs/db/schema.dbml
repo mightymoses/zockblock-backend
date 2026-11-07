@@ -8,7 +8,7 @@ Table user {
   avatar_url varchar
   avatar_mode varchar [not null, default: 'animal']
   animal_asset_name varchar
-  avatar_color integer
+  avatar_color bigint // ARGB, up to 0xFFFFFFFF
   bio varchar
   crash_reports_consent boolean
   crash_reports_consent_updated_at timestamp
